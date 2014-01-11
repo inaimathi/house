@@ -6,7 +6,8 @@
   :author "Inaimathi <leo.zovic@gmail.com>"
   :license "AGPL3"
   :depends-on (#:alexandria #:anaphora #:cl-base64 #:cl-ppcre #:cl-json #:bordeaux-threads #:cl-fad #:usocket #:cl-ppcre #:optima #:flexi-streams)
-  :components ((:file "house/package")
-	       (:file "house/model")
-	       (:file "house/util")
-	       (:file "house/house")))
+  :components ((:file "package")
+	       (:file "model")
+	       (:file "util")
+	       (:file "define-handler")
+	       (:file "house")))

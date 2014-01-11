@@ -2,7 +2,6 @@
 (in-package :house)
 
 ;;;;;;;;;; System tables
-(defparameter *handlers* (make-hash-table :test 'equal))
 (defparameter *channels* (make-hash-table))
 (defparameter *sessions* (make-hash-table :test 'equal))
 (defparameter *new-session-hook* nil)
@@ -132,83 +131,6 @@
   (ignore-errors 
     (write! err sock)
     (socket-close sock)))
-
-;;;;; Defining Handlers
-(defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
-  (with-gensyms (cookie?)
-    `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session parameters))
-       (let ,(loop for arg in args collect `(,arg (uri-decode (cdr (assoc ,(->keyword arg) parameters)))))
-	 (let ((res (make-instance 
-		     'response 
-		     :content-type ,content-type 
-		     :cookie (unless ,cookie? (token session))
-		     :body (progn ,@body))))
-	   (write! res sock)
-	   (socket-close sock))))))
-
-(defmacro make-stream-handler ((&rest args) &body body)
-  (with-gensyms (cookie?)
-    `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session))
-       (let ,(loop for arg in args 
-		collect `(,arg (uri-decode (cdr (assoc ,(->keyword arg) parameters)))))
-	 (let ((res (progn ,@body)))
-	   (write! (make-instance 'response
-				  :keep-alive? t :content-type "text/event-stream" 
-				  :cookie (unless ,cookie? (token session))) sock)
-	   (write! (make-instance 'sse :data (or res "Listening...")) sock)
-	   (force-output (socket-stream sock)))))))
-
-(defmacro bind-handler (name handler)
-  (assert (symbolp name) nil "`name` must be a symbol")
-  (let ((uri (if (eq name 'root) "/" (format nil "/~(~a~)" name))))
-    `(progn
-       (when (gethash ,uri *handlers*)
-	 (warn ,(format nil "Redefining handler '~a'" uri)))
-       (setf (gethash ,uri *handlers*) ,handler))))
-
-(defmacro define-closing-handler ((name &key (content-type "text/html")) (&rest args) &body body)
-  `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body)))
-
-(defmacro define-stream-handler ((name) (&rest args) &body body)
-  `(bind-handler ,name (make-stream-handler ,args ,@body)))
-
-(defmethod define-file-handler ((path pathname) &key stem-from)
-  (cond ((cl-fad:directory-exists-p path)
-	 (cl-fad:walk-directory 
-	  path 
-	  (lambda (fname)
-	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
-	((cl-fad:file-exists-p path)
-	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
-	       (let ((mime (path->mimetype path)))
-		 (lambda (sock cookie? session parameters)
-		   (declare (ignore cookie? session parameters))
-		   (with-open-file (s path :direction :input :element-type 'octet)
-		     (let ((buf (make-array (file-length s) :element-type 'octet)))
-		       (read-sequence buf s)
-		       (write! (make-instance 'response :content-type mime :body buf) sock))
-		     (socket-close sock))))))
-	(t
-	 (warn "Tried serving nonexistent file '~a'" path)))
-  nil)
-
-(defmethod define-file-handler ((path string) &key stem-from)
-  (define-file-handler (pathname path) :stem-from stem-from))
-
-(defmacro define-redirect-handler ((name &key permanent?) target)
-  (with-gensyms (cookie?)
-    `(bind-handler 
-      ,name
-      (lambda (sock ,cookie? session parameters)
-	(declare (ignorable sock ,cookie? session parameters))
-	(write! (make-instance 
-		 'response :response-code ,(if permanent? "301 Moved Permanently" "307 Temporary Redirect")
-		 :location ,target :content-type "text/plain"
-		 :body "Resource moved...")
-		sock)
-	(socket-close sock)))))
 
 ;;;;; Session-related
 (defmacro new-session-hook! (&body body)
