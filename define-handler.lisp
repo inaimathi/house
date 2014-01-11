@@ -57,11 +57,11 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     :type-expression `(json:decode-json-from-string ,parameter))
 
 (define-http-type (:keyword)
-    :type-expression `(house:->keyword ,parameter))
+    :type-expression `(->keyword ,parameter))
 
 (define-http-type (:list-of-keyword)
     :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
-			 collect (house:->keyword elem)))
+			 collect (->keyword elem)))
 
 (define-http-type (:list-of-integer)
     :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
