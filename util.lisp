@@ -1,5 +1,15 @@
 (in-package :house)
 
+(defun debug! (&optional (stream *standard-output*))
+  (flet ((dbg (msg) (format stream "~a~%" msg)))
+    (defmethod handle-request :before (sock req) (dbg "Handling request..."))
+    (defmethod handle-request :after (sock req) (dbg "Completed request..."))
+    (defmethod buffer! :before (buf) (dbg "Buffering from socket..."))
+    (defmethod write! :before ((res response) sock) (dbg "Writing response..."))
+    (defmethod error! :before (res sock) (dbg "Sending error response..."))
+    (defmethod subscribe! :before (chan sock) (dbg (format nil "Subscribing to ~s..." chan)))
+    (defmethod publish! :before (chan msg) (dbg (format nil "Sending to ~s..." chan)))))
+
 (defmethod ->keyword ((thing symbol))
   (intern (symbol-name thing) :keyword))
 
