@@ -146,7 +146,7 @@
 	`(cl-base64:usb8-array-to-base64-string
 	  (with-open-file (s ,path :element-type '(unsigned-byte 8))
 	    (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s)))))
-	`(progn (warn "/dev/random not found; using insecure session tokens")
+	`(progn (warn "/dev/urandom not found; using insecure session tokens")
 		(coerce 
 		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 		    repeat 32 collect (aref chars (random (length chars))))
