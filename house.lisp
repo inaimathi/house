@@ -149,7 +149,7 @@
 	`(progn (warn "/dev/random not found; using insecure session tokens")
 		(coerce 
 		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-		    repeat 32 collect (aref chars (random 64)))
+		    repeat 32 collect (aref chars (random (length chars))))
 		 'string)))))
 
 (defun new-session-token ()
