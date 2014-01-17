@@ -140,14 +140,20 @@
 (defun clear-session-hooks! ()
   (setf *new-session-hook* nil))
 
+(defmacro raw-token ()
+  (let ((path (make-pathname :directory '(:absolute "dev") :name "urandom")))
+    (if (cl-fad:file-exists-p path)
+	`(cl-base64:usb8-array-to-base64-string
+	  (with-open-file (s ,path :element-type '(unsigned-byte 8))
+	    (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s)))))
+	`(progn (warn "/dev/random not found; using insecure session tokens")
+		(coerce 
+		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+		    repeat 32 collect (aref chars (random 64)))
+		 'string)))))
+
 (defun new-session-token ()
-  (concatenate 
-   'string
-   "session="
-   (cl-base64:usb8-array-to-base64-string
-    (with-open-file (s "/dev/urandom" :element-type '(unsigned-byte 8))
-      (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s))))
-    :uri t)))
+  (concatenate 'string "session=" (raw-token)))
 
 (defun new-session! ()
   (let ((session (make-instance 'session :token (new-session-token))))
