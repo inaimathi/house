@@ -72,18 +72,20 @@ parameters with a lower priority can refer to parameters of a higher priority.")
   (let ((cpy (copy-list args)))
     (sort cpy #'<= :key (lambda (arg) (gethash (second arg) priority-table)))))
 
+(defun arg-exp (arg-sym)
+  `(uri-decode (cdr (assoc ,(->keyword arg-sym) parameters))))
+
 (defun arguments (args body)
   (loop with res = body
      for arg in (args-by-type-priority args)
      do (match arg
 	  ((list* arg-sym type restrictions)
-	   (let ((arg-exp `(uri-decode (cdr (assoc ,(->keyword arg-sym) parameters)))))
-	     (setf res
-		   `(let ((,arg-sym ,(or (type-expression arg-exp type restrictions) arg-exp)))
-		      ,@(awhen (lookup-assertion arg-sym type restrictions) `((assert-http ,it)))
-		      ,res))))
+	   (setf res
+		 `(let ((,arg-sym ,(or (type-expression (arg-exp arg-sym) type restrictions) (arg-exp arg-sym))))
+		    ,@(awhen (lookup-assertion arg-sym type restrictions) `((assert-http ,it)))
+		    ,res)))
 	  ((guard arg-sym (symbolp arg-sym))
-	   (setf res `(let ((,arg-sym (cdr (assoc ,(->keyword arg-sym) parameters)))) 
+	   (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
 			,res))))
      finally (return res)))
 
