@@ -33,7 +33,8 @@
 				     (old? (error! +400+ ready))
 				     (t (handler-case
 					    (handle-request ready (parse buf))
-					  ((not simple-error) () (error! +400+ ready)))))))))))
+					  #-CCL((not simple-error) () (error! +400+ ready))
+					  #+CCL(error () (error! +400+ ready)))))))))))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
