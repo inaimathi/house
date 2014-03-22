@@ -3,8 +3,6 @@
 
 ;;;;;;;;;; System tables
 (defparameter *channels* (make-hash-table))
-(defparameter *sessions* (make-hash-table :test 'equal))
-(defparameter *new-session-hook* nil)
 
 ;;;;;;;;;; Function definitions
 ;;; The basic structure of the server is
@@ -23,14 +21,14 @@
 			   (when (eq :eof (buffer! buf))
 			     (remhash ready conns)
 			     (remhash ready buffers))
-			   (let ((complete? (complete? buf))
-				 (big? (too-big? buf))
-				 (old? (too-old? buf)))
-			     (when (or complete? big? old?)
+			   (let ((complete? (found-crlf? buf))
+				 (too-big? (> (content-size buf) +max-request-size+))
+				 (too-old? (> (- (get-universal-time) (started buf)) +max-request-size+)))
+			     (when (or complete? too-big? too-old?)
 			       (remhash ready conns)
 			       (remhash ready buffers)
-			       (cond (big? (error! +413+ ready))
-				     (old? (error! +400+ ready))
+			       (cond (too-big? (error! +413+ ready))
+				     (too-old? (error! +400+ ready))
 				     (t (handler-case
 					    (handle-request ready (parse buf))
 					  #-CCL((not simple-error) () (error! +400+ ready))
@@ -38,14 +36,6 @@
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
-
-(defmethod complete? ((buffer buffer)) (found-crlf? buffer))
-
-(defmethod too-big? ((buffer buffer))
-  (> (content-size buffer) +max-request-size+))
-
-(defmethod too-old? ((buffer buffer))
-  (> (- (get-universal-time) (started buffer)) +max-request-size+))
 
 (defmethod buffer! ((buffer buffer))
   (handler-case
@@ -132,41 +122,6 @@
   (ignore-errors 
     (write! err sock)
     (socket-close sock)))
-
-;;;;; Session-related
-(defmacro new-session-hook! (&body body)
-  `(push (lambda (session) ,@body)
-	 *new-session-hook*))
-
-(defun clear-session-hooks! ()
-  (setf *new-session-hook* nil))
-
-(defmacro raw-token ()
-  (let ((path (make-pathname :directory '(:absolute "dev") :name "urandom")))
-    (if (cl-fad:file-exists-p path)
-	`(cl-base64:usb8-array-to-base64-string
-	  (with-open-file (s ,path :element-type '(unsigned-byte 8))
-	    (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s)))))
-	`(progn (warn "/dev/urandom not found; using insecure session tokens")
-		(coerce 
-		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-		    repeat 32 collect (aref chars (random (length chars))))
-		 'string)))))
-
-(defun new-session-token ()
-  (concatenate 'string "session=" (raw-token)))
-
-(defun new-session! ()
-  (let ((session (make-instance 'session :token (new-session-token))))
-    (setf (gethash (token session) *sessions*) session)
-    (loop for hook in *new-session-hook*
-	 do (funcall hook session))
-    session))
-
-(defun get-session! (token)
-  (awhen (gethash token *sessions*)
-    (setf (last-poked it) (get-universal-time))
-    it))
 
 ;;;;; Channel-related
 (defmethod subscribe! ((channel symbol) (sock usocket))

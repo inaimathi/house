@@ -10,4 +10,5 @@
 	       (:file "model")
 	       (:file "util")
 	       (:file "define-handler")
+	       (:file "session")
 	       (:file "house")))

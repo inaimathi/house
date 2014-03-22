@@ -3,7 +3,7 @@
 (defun debug! (&optional (stream *standard-output*))
   (flet ((dbg (label &rest msg) (format stream ">>>> ~a~%~{~s~%----------~%~}~%" label msg)))
     (defmethod handle-request :before (sock req) 
-	       (dbg "Handling request..." sock req (resource req) (headers req)))
+	       (dbg "Handling request..." sock req (resource req) (headers req) (parameters req)))
     (defmethod handle-request :after (sock req) 
 	       (dbg "Completed request..."))
     (defmethod buffer! :before (buf) 
@@ -15,7 +15,8 @@
     (defmethod subscribe! :before (chan sock) 
 	       (dbg "New subscriber" chan))
     (defmethod publish! :before (chan msg) 
-	       (dbg "Publishing to channel" chan msg))))
+	       (dbg "Publishing to channel" chan msg))
+    nil))
 
 (defmethod ->keyword ((thing symbol))
   (intern (symbol-name thing) :keyword))
