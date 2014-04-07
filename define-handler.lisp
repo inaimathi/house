@@ -107,7 +107,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 (defmacro make-stream-handler ((&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session))
+       (declare (ignorable session parameters))
        ,(arguments args
 		   `(let ((res (progn ,@body)))
 		      (write! (make-instance 'response

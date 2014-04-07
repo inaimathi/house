@@ -10,8 +10,9 @@
 	       (dbg "Buffering from socket..."))
     (defmethod write! :before ((res response) sock) 
 	       (dbg "Writing response..."))
-    (defmethod error! :before (res sock) 
-	       (dbg "Sending error response..." sock res (response-code res)))
+    (defmethod error! :before (res sock &optional instance) 
+	       (dbg "Sending error response..."
+		    instance sock res (response-code res)))
     (defmethod subscribe! :before (chan sock) 
 	       (dbg "New subscriber" chan))
     (defmethod publish! :before (chan msg) 

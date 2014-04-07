@@ -17,7 +17,7 @@ You should then be able to hop over to a browser and visit `http://localhost:404
 
 Because `:house` is single-threaded, using `house:start` directly as above will monopolize your REPL. You might not care about that in certain circumstances, or perhaps your deployment environment can't afford the extra thread. If you do and it can, you should start `:house` in a separate thread to retain your ability to evaluate things against the running system. You can do that the usual way:
 
-    (defparameter *server* (bordeaux-threads:make-thread (lambda () (house:start 4040))
+    (defparameter *server* (bordeaux-threads:make-thread (lambda () (house:start 4040))))
 
 ##### Static Files
 

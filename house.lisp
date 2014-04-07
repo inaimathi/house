@@ -30,9 +30,12 @@
 			       (cond (too-big? (error! +413+ ready))
 				     (too-old? (error! +400+ ready))
 				     (t (handler-case
-					    (handle-request ready (parse buf))
-					  #-CCL((not simple-error) () (error! +400+ ready))
-					  #+CCL(error () (error! +400+ ready)))))))))))
+					  (handle-request ready (parse buf))
+					  #-CCL((and (not warning)
+						 (not simple-error)) (e)
+						 (error! +500+ ready e))
+					  #+CCL(error (e) 
+						 (error! +500+ ready e)))))))))))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
@@ -118,7 +121,8 @@
     (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
 	    (id res) (event res) (retry res) (data res))))
 
-(defmethod error! ((err response) (sock usocket))
+(defmethod error! ((err response) (sock usocket) &optional instance)
+  (declare (ignorable instance))
   (ignore-errors 
     (write! err sock)
     (socket-close sock)))
