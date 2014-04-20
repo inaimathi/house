@@ -11,7 +11,8 @@
      (error (make-instance 'http-assertion-error :assertion ',assertion))))
 
 (defclass buffer ()
-  ((contents :accessor contents :initform nil)
+  ((tries :accessor tries :initform 0)
+   (contents :accessor contents :initform nil)
    (bi-stream :reader bi-stream :initarg :bi-stream)
    (found-crlf? :accessor found-crlf? :initform nil)
    (content-size :accessor content-size :initform 0)

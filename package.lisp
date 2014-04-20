@@ -22,3 +22,4 @@
 
 (defparameter +max-request-size+ 50000)
 (defparameter +max-request-age+ 30)
+(defparameter +max-buffer-tries+ 10)
