@@ -1,4 +1,4 @@
-;; house.lisp
+1;; house.lisp
 (in-package :house)
 
 ;;;;;;;;;; System tables
@@ -18,12 +18,13 @@
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready :element-type 'octet) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer :bi-stream (flex-stream ready)))))
+			   (incf (tries buf))
 			   (when (eq :eof (buffer! buf))
 			     (remhash ready conns)
 			     (remhash ready buffers))
 			   (let ((complete? (found-crlf? buf))
 				 (too-big? (> (content-size buf) +max-request-size+))
-				 (too-old? (> (- (get-universal-time) (started buf)) +max-request-size+))
+				 (too-old? (> (- (get-universal-time) (started buf)) +max-request-age+))
 				 (too-needy? (> (tries buf) +max-buffer-tries+)))
 			     (when (or complete? too-big? too-old? too-needy?)
 			       (remhash ready conns)
@@ -46,7 +47,6 @@
   (handler-case
       (let ((stream (bi-stream buffer))
 	    (partial-crlf (list #\return #\linefeed #\return)))
-	(incf (tries buffer))
 	(loop for char = (read-char-no-hang stream nil :eof)
 	   do (when (and (eql #\linefeed char)
 			 (starts-with-subseq partial-crlf (contents buffer)))
