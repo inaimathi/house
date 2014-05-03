@@ -1,5 +1,5 @@
 (defpackage :house  
-  (:use :cl #:optima #:cl-ppcre #:usocket)
+  (:use :cl #:optima #:cl-ppcre #:usocket #:lisp-unit)
   (:import-from #:alexandria :starts-with-subseq :with-gensyms)
   (:import-from #:flexi-streams :octet)
   (:import-from #:anaphora :aif :awhen :aand :it)
