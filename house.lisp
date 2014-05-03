@@ -17,8 +17,8 @@
 	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready :element-type 'octet) conns) :on)
-			 (let ((buf (gethash ready buffers (make-instance 'buffer :bi-stream (flex-stream ready)))))
-			   (incf (tries buf))
+			 (let ((buf (or (gethash ready buffers)
+					(setf (gethash ready buffers) (make-instance 'buffer :bi-stream (flex-stream ready))))))
 			   (when (eq :eof (buffer! buf))
 			     (remhash ready conns)
 			     (remhash ready buffers))
@@ -47,6 +47,7 @@
   (handler-case
       (let ((stream (bi-stream buffer))
 	    (partial-crlf (list #\return #\linefeed #\return)))
+	(incf (tries buffer))
 	(loop for char = (read-char-no-hang stream nil :eof)
 	   do (when (and (eql #\linefeed char)
 			 (starts-with-subseq partial-crlf (contents buffer)))
