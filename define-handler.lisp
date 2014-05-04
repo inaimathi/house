@@ -61,32 +61,39 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 
 (define-http-type (:list-of-keyword)
     :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
-			 collect (->keyword elem)))
+			 if (stringp elem) collect (->keyword elem)
+			 else do (error (make-instance 'http-assertion-error :assertion `(stringp ,elem)))))
 
 (define-http-type (:list-of-integer)
-    :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
-			 collect (parse-integer elem :junk-allowed t)))
+    :type-expression `(json:decode-json-from-string ,parameter)
+    :lookup-assertion `(every #'numberp ,parameter))
 
 ;;;;;;;;;; Constructing argument lookups
 (defun args-by-type-priority (args &optional (priority-table *http-type-priority*))
   (let ((cpy (copy-list args)))
-    (sort cpy #'<= :key (lambda (arg) (gethash (second arg) priority-table)))))
+    (sort cpy #'<= 
+	  :key (lambda (arg)
+		 (if (listp arg)
+		     (gethash (second arg) priority-table)
+		     0)))))
 
 (defun arg-exp (arg-sym)
-  `(uri-decode (cdr (assoc ,(->keyword arg-sym) parameters))))
+  `(aif (cdr (assoc ,(->keyword arg-sym) parameters))
+	(uri-decode it)
+	(error (make-instance 'http-assertion-error :assertion ',arg-sym))))
 
 (defun arguments (args body)
   (loop with res = body
      for arg in (args-by-type-priority args)
      do (match arg
+	  ((guard arg-sym (symbolp arg-sym))
+	   (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
+			,res)))
 	  ((list* arg-sym type restrictions)
 	   (setf res
 		 `(let ((,arg-sym ,(or (type-expression (arg-exp arg-sym) type restrictions) (arg-exp arg-sym))))
 		    ,@(awhen (lookup-assertion arg-sym type restrictions) `((assert-http ,it)))
-		    ,res)))
-	  ((guard arg-sym (symbolp arg-sym))
-	   (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
-			,res))))
+		    ,res))))
      finally (return res)))
 
 ;;;;;;;;;; Defining Handlers

@@ -4,12 +4,12 @@
   (flet ((dbg (label &rest msg) (format stream ">>>> ~a~%~{~s~%----------~%~}~%" label msg)))
     (defmethod process-ready :after ((sock stream-server-usocket) conns buffers)
 	       (dbg "New listener..." sock
-		    "Connections: " (alexandria:hash-table-keys conns)
-		    "Buffers: " (alexandria:hash-table-keys buffers)))
+		    "CONNECTIONS: " (alexandria:hash-table-keys conns)
+		    "BUFFERS: " (alexandria:hash-table-keys buffers)))
     (defmethod process-ready :before ((sock stream-usocket) conns buffers)
 	       (dbg "Preparing to buffer..." sock
-		    "Connections: " (alexandria:hash-table-keys conns)
-		    "Buffers: " (alexandria:hash-table-keys buffers)))
+		    "CONNECTIONS: " (alexandria:hash-table-keys conns)
+		    "BUFFERS: " (alexandria:hash-table-keys buffers)))
     (defmethod flex-stream :before (sock)
 	       (dbg "Creating flexi-stream..." sock (get-peer-address sock) (get-peer-port sock)))
     (defmethod handle-request :before (sock req) 
