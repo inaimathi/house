@@ -41,6 +41,7 @@
 	       (error! +400+ ready))
 	      (t (handler-case
 		     (handle-request ready (parse buf))
+		   (http-assertion-error () +400+)
 		   #-CCL((and (not warning)
 			  (not simple-error)) (e)
 			  (error! +500+ ready e))
