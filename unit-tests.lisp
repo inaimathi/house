@@ -81,6 +81,22 @@ test=post
     (assert-equal '((:test . "get") (:test . "post")) (parameters req))
     (assert-equal '(:test . "get") (assoc :test (parameters req)))))
 
+(defmethod read-all ((stream stream))
+  (coerce 
+   (loop for char = (read-char-no-hang stream nil :eof)
+      until (or (null char) (eq char :eof)) collect char into msg
+      finally (return (values msg char)))
+   'string))
+
+(defmethod write! ((strings list) (stream stream))
+  (mapc (lambda (seq)
+	  (write-sequence seq stream)
+	  (crlf stream))
+	strings)
+  (crlf stream)
+  (force-output stream)
+  (values))
+
 (define-test running-server!
   (let* ((port 4321)
 	 (server (bt:make-thread (lambda () (start port)))))
@@ -92,26 +108,13 @@ test=post
     (define-closing-handler (arg-test-two :content-type "text/plain") ((a :string) b (key-list :list-of-keyword) (json :json))
       (format nil "~{~s~^ ~}" (list a b key-list json)))
     (unwind-protect
-	 (labels ((wrt (stream strings)
-		    (mapc (lambda (seq) 
-			    (write-sequence seq stream)
-			    (crlf stream))
-			  strings)
-		    (crlf stream)
-		    (force-output stream))
-		  (read-all (stream)
-		    (coerce 
-		     (loop for char = (read-char-no-hang stream nil :eof)
-			until (or (null char) (eq char :eof)) collect char into msg
-			finally (return (values msg char)))
-		     'string))
-		  (parse-res (res)
+	 (labels ((parse-res (res)
 		    (destructuring-bind (hdr bdy) (cl-ppcre:split "\\r\\n\\r\\n" res)
 		      (list (cl-ppcre:split "\\r\\n" hdr) 
 			    (cl-ppcre:regex-replace "\\r\\n" bdy ""))))
 		  (req (&rest lines)
 		    (with-client-socket (sock stream "localhost" port)
-		      (wrt stream lines)
+		      (write! stream lines)
 		      (when (wait-for-input sock :timeout 2 :ready-only t)
 			(parse-res (read-all stream))))))
 	   (destructuring-bind (headers body) (req "GET /test HTTP/1.1")
