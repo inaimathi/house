@@ -128,7 +128,8 @@
 	(write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
       (awhen (body res)
 	(write-ln "Content-Length: " (write-to-string (length it)))
-	(crlf stream)
+	#-win32(crlf stream)
+	#+win32(format stream "~%")
 	(write-ln it))
       (values))))
 
