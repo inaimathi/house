@@ -14,7 +14,9 @@
 	(conns (make-hash-table))
         (buffers (make-hash-table)))
     (unwind-protect
-	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
+	 (loop (loop for ready in
+		    #-win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
+		    #+win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t :timeout 5)
 		  do (process-ready ready conns buffers)))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
@@ -49,14 +51,18 @@
 		   #+CCL(error (e) 
 			  (error! +500+ ready e)))))))))
 
+(defun line-terminated? (lst)
+  (starts-with-subseq 
+   #-win32(list #\linefeed #\return #\linefeed #\return)
+   #+win32(list #\newline #\newline)
+   lst))
+
 (defmethod buffer! ((buffer buffer))
   (handler-case
-      (let ((stream (bi-stream buffer))
-	    (partial-crlf (list #\return #\linefeed #\return)))
+      (let ((stream (bi-stream buffer)))
 	(incf (tries buffer))
 	(loop for char = (read-char-no-hang stream nil :eof)
-	   do (when (and (eql #\linefeed char)
-			 (starts-with-subseq partial-crlf (contents buffer)))
+	   do (when (line-terminated? (cons char (contents buffer)))
 		(setf (found-crlf? buffer) t))
 	   until (or (null char) (eql :eof char))
 	   do (push char (contents buffer)) do (incf (content-size buffer))
