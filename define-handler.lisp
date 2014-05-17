@@ -31,7 +31,8 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 (define-http-type (:string))
 
 (define-http-type (:integer)
-    :type-expression `(parse-integer ,parameter :junk-allowed t))
+    :type-expression `(parse-integer ,parameter :junk-allowed t)
+    :type-assertion `(numberp ,parameter))
 
 (define-http-type (:json)
     :type-expression `(json:decode-json-from-string ,parameter))
