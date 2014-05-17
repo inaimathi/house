@@ -100,7 +100,7 @@ test=post
 (define-test running-server!
   (let* ((port 4321)
 	 (server (bt:make-thread (lambda () (start port)))))
-    (sleep 0.5)
+    (sleep 1)
     (define-closing-handler (test :content-type "text/plain") ()
       "Hello!")
     (define-closing-handler (arg-test :content-type "text/plain") ((num :integer) (key :keyword) (num-list :list-of-integer))
@@ -114,7 +114,7 @@ test=post
 			    (cl-ppcre:regex-replace "\\r\\n" bdy ""))))
 		  (req (&rest lines)
 		    (with-client-socket (sock stream "localhost" port)
-		      (write! stream lines)
+		      (write! lines stream)
 		      (when (wait-for-input sock :timeout 2 :ready-only t)
 			(parse-res (read-all stream))))))
 	   (destructuring-bind (headers body) (req "GET /test HTTP/1.1")
@@ -128,8 +128,7 @@ test=post
 	     (assert-equal "1 :TEST (1 2 3 4 5)" body))
 	   (destructuring-bind (headers body) (req "POST /arg-test-two HTTP/1.1")
 	     (assert-equal "HTTP/1.1 400 Bad Request" (first headers))
-	     (assert-equal "Failed HTTP assertion: HOUSE::A
-Possibly invalid arguments." body))
+	     (assert-equal "Malformed, or slow HTTP request..." body))
 	   (destructuring-bind (headers body) (req "POST /arg-test-two HTTP/1.1" "" "a=test&b=blah&key-list=%5B%22one%22%2C%22two%22%2C%22three%22%5D&json=%5B%22one%22%2C%22two%22%2C%22three%22%5D")
 	     (assert-equal "HTTP/1.1 200 OK" (first headers))
 	     (assert-equal "\"test\" \"blah\" (:ONE :TWO :THREE) (\"one\" \"two\" \"three\")" body)))
