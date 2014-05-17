@@ -44,7 +44,7 @@ You can specify desired argument types for your handlers. For example:
     (define-closing-handler (handler) ((foo :json) (bar :integer)))
        ...)
 
-You can then use `bar` as an integer and `foo` as an parsed JSON s-expression in the body of that handler. The built-in types are `:string`, `:integer`, `:json`, `:keyword`, `:list-of-keyword` and `:list-of-integer`. If you need a more specific type, you can use `define-http-type`. For example:
+You can then use `bar` as an integer and `foo` as a parsed JSON s-expression in the body of that handler. The built-in types are `:string`, `:integer`, `:json`, `:keyword`, `:list-of-keyword` and `:list-of-integer`. If you need a more specific type, you can use `define-http-type`. For example:
 
     (define-http-type (:game)
 	     :type-expression `(gethash ,parameter *game-table*)
@@ -55,6 +55,13 @@ Once that's done, you can annotate parameters with the `:game` label.
     (define-closing-handler (handler) ((foo :game) ...) ...)
 
 `foo` will then be looked up in `*game-table*`, and `assert-http`-ed to be of type `'game` before the handler body is evaluated.
+
+It's also possible to enforce arbitrary properties of parsed parameters. For instance
+
+    (define-closing-handler (handler) ((foo :integer (>= 64 foo 2) (evenp foo)))
+       ...)
+
+ensures that `foo` will be an even integer between 2 and 64 (inclusive).
 
 All this is entirely optional. If you don't care about it, just pass un-annotated arguments to your handlers, and they'll do exactly what you'd expect. You'll then be able to handle the type-conversion/assertions entirely manually.
 
