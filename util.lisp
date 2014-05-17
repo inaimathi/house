@@ -19,6 +19,8 @@
     (defmethod buffer! :before (buf)
 	       (dbg "Buffering..." buf (tries buf)))
     (defmethod buffer! :after (buf)
+	       (dbg "Buffered..."
+		    (coerce (reverse (contents buf)) 'string))
 	       (when (> (tries buf) +max-buffer-tries+)
 		 (dbg "Needy buffer..." buf (tries buf) (coerce (reverse (contents buf)) 'string))))
     (defmethod write! :before ((res response) sock) 
