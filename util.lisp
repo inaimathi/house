@@ -77,16 +77,12 @@
    'string))
 
 (defmethod path->uri ((path pathname) &key stem-from)
-  (format
-   nil "~a" 
-   (make-pathname 
-    :directory
-    (cons :absolute
+  (format nil "/~{~a/~}~a.~a"
 	  (if stem-from
 	      (member stem-from (cdr (pathname-directory path)) :test #'string=)
-	      (cdr (pathname-directory path))))
-    :name (pathname-name path)
-    :type (pathname-type path))))
+	      (cdr (pathname-directory path)))
+	  (pathname-name path)
+	  (pathname-type path)))
 
 (defparameter *mimetype-table*
   '(("atom" . "application/atom+xml")
