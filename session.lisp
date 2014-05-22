@@ -34,5 +34,28 @@
 
 (defun get-session! (token)
   (awhen (gethash token *sessions*)
-    (setf (last-poked it) (get-universal-time))
-    it))
+    (if (idling? it)
+	(remhash token *sessions*)
+	(poke! it))))
+
+(defun clean-sessions! ()
+  (loop for k being the hash-keys of *sessions*
+     for v being the hash-values of *sessions*
+     when (idling? v) do (remhash k *sessions*)))
+
+(defmethod idling? ((sess session))
+  (> (- (get-universal-time) (last-poked sess)) +max-session-idle+))
+
+(defmethod poke! ((sess session))
+  (setf (last-poked sess) (get-universal-time))
+  sess)
+
+;; Minimal: 
+;;   - every n new sessions, go through existing sessions and destroy the ones that haven't been poked in +max-session-idle+
+
+;; Ideal:
+;; Also, 
+;;   - Whenever a new session is created, its token is associated with a connection
+;;   - Whenever a connection is closed anywhere, all tokens associated with it are destroyed
+
+;; When a user attempts to use an outdated/nonexistent session, just get them a new one
