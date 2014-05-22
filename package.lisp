@@ -23,4 +23,6 @@
 (defparameter +max-request-size+ 50000)
 (defparameter +max-buffer-tries+ 10)
 (defparameter +max-request-age+ 30)
+
 (defparameter +max-session-idle+ (* 30 60))
+(defparameter +clean-sessions-every+ 100)

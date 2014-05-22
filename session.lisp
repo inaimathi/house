@@ -25,12 +25,16 @@
 (defun new-session-token ()
   (concatenate 'string "session=" (raw-token)))
 
-(defun new-session! ()
-  (let ((session (make-instance 'session :token (new-session-token))))
-    (setf (gethash (token session) *sessions*) session)
-    (loop for hook in *new-session-hook*
+(let ((session-count 0))
+  (defun new-session! ()
+    (when (>= (incf session-count) +clean-sessions-every+)
+      (setf session-count 0)
+      (clean-sessions!))
+    (let ((session (make-instance 'session :token (new-session-token))))
+      (setf (gethash (token session) *sessions*) session)
+      (loop for hook in *new-session-hook*
 	 do (funcall hook session))
-    session))
+      session)))
 
 (defun get-session! (token)
   (awhen (gethash token *sessions*)
@@ -49,13 +53,3 @@
 (defmethod poke! ((sess session))
   (setf (last-poked sess) (get-universal-time))
   sess)
-
-;; Minimal: 
-;;   - every n new sessions, go through existing sessions and destroy the ones that haven't been poked in +max-session-idle+
-
-;; Ideal:
-;; Also, 
-;;   - Whenever a new session is created, its token is associated with a connection
-;;   - Whenever a connection is closed anywhere, all tokens associated with it are destroyed
-
-;; When a user attempts to use an outdated/nonexistent session, just get them a new one
