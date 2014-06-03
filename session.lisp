@@ -11,12 +11,13 @@
   (setf *new-session-hook* nil))
 
 (defmacro raw-token ()
-  (let ((path (make-pathname :directory '(:absolute "dev") :name "urandom")))
-    (if (cl-fad:file-exists-p path)
-	`(cl-base64:usb8-array-to-base64-string
-	  (with-open-file (s ,path :element-type '(unsigned-byte 8))
-	    (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s)))))
-	`(progn (warn "/dev/urandom not found; using insecure session tokens")
+  (let ((path (or (cl-fad:file-exists-p "/dev/urandom") (cl-fad:file-exists-p "/dev/arandom"))))
+    (if path
+	`(with-open-file (s ,path :element-type '(unsigned-byte 8))
+	   (let ((buf (make-array 32)))
+	     (read-sequence buf s)
+	     (cl-base64:usb8-array-to-base64-string buf)))
+	`(progn (warn "neither /dev/urandom nor /dev/arandom found; using insecure session tokens")
 		(coerce 
 		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 		    repeat 32 collect (aref chars (random (length chars))))
