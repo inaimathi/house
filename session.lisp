@@ -10,21 +10,17 @@
 (defun clear-session-hooks! ()
   (setf *new-session-hook* nil))
 
-(defmacro raw-token ()
-  (let ((path (or (cl-fad:file-exists-p "/dev/urandom") (cl-fad:file-exists-p "/dev/arandom"))))
-    (if path
-	`(with-open-file (s ,path :element-type '(unsigned-byte 8))
-	   (let ((buf (make-array 32)))
-	     (read-sequence buf s)
-	     (cl-base64:usb8-array-to-base64-string buf)))
-	`(progn (warn "neither /dev/urandom nor /dev/arandom found; using insecure session tokens")
-		(coerce 
-		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-		    repeat 32 collect (aref chars (random (length chars))))
-		 'string)))))
-
-(defun new-session-token ()
-  (concatenate 'string "session=" (raw-token)))
+(let ((ctx nil))
+  (defun new-session-token ()
+    (unless ctx
+      (setf ctx
+	    (if (or (cl-fad:file-exists-p "/dev/urandom")
+		    (cl-fad:file-exists-p "/dev/arandom"))
+		(init-kernel-seed)
+		(progn 
+		  (warn "neither /dev/urandom nor /dev/arandom found; using insecure session tokens")
+		  (init-common-lisp-random-seed)))))
+    (format nil "session=~32,'0x" (rand-bits ctx 384))))
 
 (let ((session-count 0))
   (defun new-session! ()

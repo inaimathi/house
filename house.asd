@@ -9,6 +9,7 @@
   :components ((:file "package")
 	       (:file "model")
 	       (:file "util")
+	       (:file "isaac")
 	       (:file "define-handler")
 	       (:file "session")
 	       (:file "house")
