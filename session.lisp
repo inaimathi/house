@@ -10,24 +10,14 @@
 (defun clear-session-hooks! ()
   (setf *new-session-hook* nil))
 
-(let* ((ctx nil)
-       (alphabet (char-range (#\a :to #\z #\A :to #\Z #\0 :to #\9)))
-       (token-length 64)
-       (next-pow (next-power-of-two (length alphabet))))
-  (defun next-char ()
-    (loop for b = (rand-bits ctx next-pow) until (> (length alphabet) b)
-       finally (return b)))
-  
+(let ((gen nil))
   (defun new-session-token! ()
-    (unless ctx
-      (setf ctx 
-	    #-win32 (init-kernel-seed)
-	    #+win32 (progn (warn "Running on Windows; using insecure session tokens")
-			   (init-common-lisp-random-seed))))
-    (let ((buf (make-string token-length)))
-      (loop for i from 0 repeat token-length
-	 do (setf (aref buf i) (aref alphabet (next-char))))
-      buf)))
+    (unless gen 
+      (setf gen (session-token:make-generator 
+		 :token-length 64
+		 :initial-seed #-win32 (isaac:init-kernel-seed) #+win32 (init-common-lisp-random-seed))))
+    #+win32 (warn "Running on Windows; using insecure session tokens")
+    (funcall gen)))
 
 (let ((session-count 0))
   (defun new-session! ()
