@@ -113,14 +113,14 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 	 (warn ,(format nil "Redefining handler '~a'" uri)))
        (setf (gethash ,uri *handlers*) ,handler))))
 
-(defmacro define-closing-handler ((name &key (content-type "text/html")) (&rest args) &body body)
-  `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body)))
+(defmacro define-handler ((name &key (close-socket? t) (content-type "text/html")) (&rest args) &body body)
+  (if close-socket?
+      `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body))
+      `(bind-handler ,name (make-stream-handler ,args ,@body))))
 
 (defmacro define-json-handler ((name) (&rest args) &body body)
-  `(bind-handler ,name (make-closing-handler (:content-type "application/json") ,args (json:encode-json-to-string (progn ,@body)))))
-
-(defmacro define-stream-handler ((name) (&rest args) &body body)
-  `(bind-handler ,name (make-stream-handler ,args ,@body)))
+  `(define-handler (,name :content-type "application/json") ,args
+     (json:encode-json-to-string (progn ,@body))))
 
 ;;;;; Special case handlers
 ;;; Don't use these in production. There are better ways.
