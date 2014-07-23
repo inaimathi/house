@@ -66,6 +66,7 @@
 		(setf (found-crlf? buffer) t))
 	   until (or (null char) (eql :eof char))
 	   do (push char (contents buffer)) do (incf (content-size buffer))
+	   when (> (content-size buffer) +max-request-size+) return char
 	   finally (return char)))
     (error () :eof)))
 
