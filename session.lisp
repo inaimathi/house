@@ -3,35 +3,27 @@
 (defparameter *sessions* (make-hash-table :test 'equal))
 (defparameter *new-session-hook* nil)
 
-(defmacro new-session-hook! (&body body)
-  `(push (lambda (session) ,@body)
-	 *new-session-hook*))
+(defmethod new-session-hook! ((callback function))
+  (push callback *new-session-hook*))
 
 (defun clear-session-hooks! ()
   (setf *new-session-hook* nil))
 
-(defmacro raw-token ()
-  (let ((path (or (cl-fad:file-exists-p "/dev/urandom") (cl-fad:file-exists-p "/dev/arandom"))))
-    (if path
-	`(with-open-file (s ,path :element-type '(unsigned-byte 8))
-	   (let ((buf (make-array 32)))
-	     (read-sequence buf s)
-	     (cl-base64:usb8-array-to-base64-string buf)))
-	`(progn (warn "neither /dev/urandom nor /dev/arandom found; using insecure session tokens")
-		(coerce 
-		 (loop with chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-		    repeat 32 collect (aref chars (random (length chars))))
-		 'string)))))
-
-(defun new-session-token ()
-  (concatenate 'string "session=" (raw-token)))
+(let ((gen nil))
+  (defun new-session-token! ()
+    (unless gen 
+      (setf gen (session-token:make-generator 
+		 :token-length 64
+		 :initial-seed #-win32 (isaac:init-kernel-seed) #+win32 (init-common-lisp-random-seed))))
+    #+win32 (warn "Running on Windows; using insecure session tokens")
+    (funcall gen)))
 
 (let ((session-count 0))
   (defun new-session! ()
     (when (>= (incf session-count) +clean-sessions-every+)
       (setf session-count 0)
       (clean-sessions!))
-    (let ((session (make-instance 'session :token (new-session-token))))
+    (let ((session (make-instance 'session :token (new-session-token!))))
       (setf (gethash (token session) *sessions*) session)
       (loop for hook in *new-session-hook*
 	 do (funcall hook session))

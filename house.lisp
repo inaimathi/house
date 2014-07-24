@@ -9,8 +9,8 @@
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
 
 ;;;;; Buffer/listen-related
-(defmethod start ((port integer))
-  (let ((server (socket-listen usocket:*wildcard-host* port :reuse-address t :element-type 'octet))
+(defmethod start ((port integer) &optional (host usocket:*wildcard-host*))
+  (let ((server (socket-listen host port :reuse-address t :element-type 'octet))
 	(conns (make-hash-table))
         (buffers (make-hash-table)))
     (unwind-protect
