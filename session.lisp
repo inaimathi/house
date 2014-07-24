@@ -3,9 +3,8 @@
 (defparameter *sessions* (make-hash-table :test 'equal))
 (defparameter *new-session-hook* nil)
 
-(defmacro new-session-hook! (&body body)
-  `(push (lambda (session) ,@body)
-	 *new-session-hook*))
+(defmethod new-session-hook! ((callback function))
+  (push callback *new-session-hook*))
 
 (defun clear-session-hooks! ()
   (setf *new-session-hook* nil))
