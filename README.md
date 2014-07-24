@@ -3,8 +3,21 @@
 
 `:house` started out as part of [the `:deal` project](https://github.com/Inaimathi/deal) ("deal"? "house"? get it?). I hacked it out in an attempt to generalize it and use it other projects with similar objectives. It's intentionally minimal, single-threaded and stresses readability over efficiency both in its internals and in the interfacing code it requires.
 
-### Usage
+### News
 
+- `define-closing-handler` and `define-stream-handler` have now been merged into `define-handler`. The new macro now has a `:close-socket?` keyword param that defaults to `t`.
+- House now depends on [:session-token](https://github.com/Inaimathi/session-token) and [:isaac](https://github.com/Inaimathi/isaac) and generates tokens without exhausting entropy
+- House exports `path->uri`
+- The `debug!` hooks now output `session-token`s for incoming requests
+
+### Installation
+
+- If you haven't already done so, install [`quicklisp`](http://www.quicklisp.org/beta/).
+- You need to install [:isaac](https://github.com/Inaimathi/isaac) and [:session-token](https://github.com/Inaimathi/session-token). That can be done either through `asdf-install`, or by cloning the repos I just linked you into your `quicklisp/local-projects/` folder. All other dependencies of `:house` are `quicklisp`able.
+- Clone [this repo](https://github.com/Inaimathi/house) into `quicklisp/local-projects/`.
+- Hop into your lisp and run `(ql:quickload :house)`
+
+### Usage
 ##### Quick start
 
     (define-closing-handler (hello-world :content-type "text/plain") ()
@@ -66,7 +79,6 @@ ensures that `foo` will be an even integer between 2 and 64 (inclusive).
 All this is entirely optional. If you don't care about it, just pass un-annotated arguments to your handlers, and they'll do exactly what you'd expect. You'll then be able to handle the type-conversion/assertions entirely manually.
 
 ### External API
-
 #### Basics
 ###### `start`
 
