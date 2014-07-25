@@ -6,14 +6,14 @@
 ### News
 
 - `define-closing-handler` and `define-stream-handler` have now been merged into `define-handler`. The new macro now has a `:close-socket?` keyword param that defaults to `t`.
-- House now depends on [:session-token](https://github.com/Inaimathi/session-token) and [:isaac](https://github.com/Inaimathi/isaac) and generates tokens without exhausting entropy
+- House now depends on [:session-token](https://github.com/Inaimathi/session-token) and generates tokens without exhausting entropy
 - House exports `path->uri`
 - The `debug!` hooks now output `session-token`s for incoming requests
 
 ### Installation
 
 - If you haven't already done so, install [`quicklisp`](http://www.quicklisp.org/beta/).
-- You need to install [:isaac](https://github.com/Inaimathi/isaac) and [:session-token](https://github.com/Inaimathi/session-token). That can be done either through `asdf-install`, or by cloning the repos I just linked you into your `quicklisp/local-projects/` folder. All other dependencies of `:house` are `quicklisp`able.
+- You need to install [:session-token](https://github.com/Inaimathi/session-token). That can be done either through `asdf-install`, or by cloning the repo I just linked you into your `quicklisp/local-projects/` folder. All other dependencies of `:house` are `quicklisp`able.
 - Clone [this repo](https://github.com/Inaimathi/house) into `quicklisp/local-projects/`.
 - Hop into your lisp and run `(ql:quickload :house)`
 

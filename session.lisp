@@ -14,7 +14,7 @@
     (unless gen 
       (setf gen (session-token:make-generator 
 		 :token-length 64
-		 :initial-seed #-win32 (isaac:init-kernel-seed) #+win32 (init-common-lisp-random-seed))))
+		 :initial-seed #-win32 (session-token:init-kernel-seed) #+win32 (session-token:init-common-lisp-random-seed))))
     #+win32 (warn "Running on Windows; using insecure session tokens")
     (funcall gen)))
 
