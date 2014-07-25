@@ -11,26 +11,23 @@
 ;;;;; Buffer/listen-related
 (defmethod start ((port integer) &optional (host usocket:*wildcard-host*))
   (let ((server (socket-listen host port :reuse-address t :element-type 'octet))
-	(conns (make-hash-table))
-        (buffers (make-hash-table)))
+	(conns (make-hash-table)))
     (unwind-protect
 	 (loop (loop for ready in
 		    #-win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		    #+win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t :timeout 5)
-		  do (process-ready ready conns buffers)))
+		  do (process-ready ready conns)))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
 
-(defmethod process-ready ((ready stream-server-usocket) (conns hash-table) (buffers hash-table))
-  (setf (gethash (socket-accept ready :element-type 'octet) conns) :on))
+(defmethod process-ready ((ready stream-server-usocket) (conns hash-table))
+  (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
 
-(defmethod process-ready ((ready stream-usocket) (conns hash-table) (buffers hash-table))
-  (let ((buf (or (gethash ready buffers)
-		 (setf (gethash ready buffers) (make-instance 'buffer :bi-stream (flex-stream ready))))))
+(defmethod process-ready ((ready stream-usocket) (conns hash-table))
+  (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-instance 'buffer :bi-stream (flex-stream ready))))))
     (when (eq :eof (buffer! buf))
       (remhash ready conns)
-      (remhash ready buffers)
       (ignore-errors (socket-close ready)))
     (let ((complete? (found-crlf? buf))
 	  (too-big? (> (content-size buf) +max-request-size+))
@@ -38,7 +35,6 @@
 	  (too-needy? (> (tries buf) +max-buffer-tries+)))
       (when (or complete? too-big? too-old? too-needy?)
 	(remhash ready conns)
-	(remhash ready buffers)
 	(cond (too-big? (error! +413+ ready))
 	      ((or too-old? too-needy?)
 	       (error! +400+ ready))
