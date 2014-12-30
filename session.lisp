@@ -16,7 +16,7 @@
 		 :token-length 64
 		 :initial-seed #-win32 (session-token:init-kernel-seed) #+win32 (session-token:init-common-lisp-random-seed))))
     #+win32 (warn "Running on Windows; using insecure session tokens")
-    (funcall gen)))
+    (concatenate 'string "session=" (funcall gen))))
 
 (let ((session-count 0))
   (defun new-session! ()

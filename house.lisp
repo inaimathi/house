@@ -17,9 +17,12 @@
 		    #-win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		    #+win32(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t :timeout 5)
 		  do (process-ready ready conns)))
-      (loop for c being the hash-keys of conns
-	 do (loop while (socket-close c)))
-      (loop while (socket-close server)))))
+      (flet ((kill-sock! (sock)
+	       #+lispworks (loop for res = (socket-close sock)
+			      until (or (null res) (eql -1 res)))
+	       #-lispworks (loop while (socket-close sock))))
+	(loop for c being the hash-keys of conns do (kill-sock! c))
+	(kill-sock! server)))))
 
 (defmethod process-ready ((ready stream-server-usocket) (conns hash-table))
   (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
