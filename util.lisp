@@ -11,7 +11,7 @@
     (defmethod flex-stream :before (sock)
 	       (dbg "Creating flexi-stream..." sock (get-peer-address sock) (get-peer-port sock)))
     (defmethod handle-request :before (sock req) 
-	       (dbg "Handling request..." sock req (resource req) (headers req) (session-token req) (parameters req)))
+	       (dbg "Handling request..." sock req (resource req) (headers req) (session-tokens req) (parameters req)))
     (defmethod handle-request :after (sock req) 
 	       (dbg "Completed request..."))
     (defmethod buffer! :before (buf)

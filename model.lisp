@@ -27,7 +27,7 @@
 (defclass request ()
   ((resource :accessor resource :initarg :resource)
    (headers :accessor headers :initarg :headers :initform nil)
-   (session-token :accessor session-token :initarg :session-token :initform nil)
+   (session-tokens :accessor session-tokens :initarg :session-tokens :initform nil)
    (parameters :accessor parameters :initarg :parameters :initform nil)))
 
 (defclass response ()
