@@ -15,7 +15,7 @@
    :assert-http
    :root :sock :session :parameters
    :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup :path->uri
-   :subscribe! :publish!
+   :subscribe! :publish! :make-sse
    :start))
 
 (in-package :house)

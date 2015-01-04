@@ -152,13 +152,18 @@
   (push sock (lookup channel *channels*))
   nil)
 
-(defmethod publish! ((channel symbol) (message string))
+(defun make-sse (data &key id event retry)
+  (make-instance 'sse :data data :id id :event event :retry retry))
+
+(defmethod publish! ((channel symbol) (message sse))
   (awhen (lookup channel *channels*)
     (setf (lookup channel *channels*)
-	  (loop with msg = (make-instance 'sse :data message)
-	     for sock in it
+	  (loop for sock in it
 	     when (ignore-errors 
-		    (write! msg sock)
+		    (write! message sock)
 		    (force-output (socket-stream sock))
 		    sock)
 	     collect it))))
+
+(defmethod publish! ((channel symbol) (message string))
+  (publish! channel (make-sse message)))
