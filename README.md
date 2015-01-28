@@ -61,7 +61,7 @@ You can then use `bar` as an integer and `foo` as a parsed JSON s-expression in 
 
     (define-http-type (:game)
 	     :type-expression `(gethash ,parameter *game-table*)
-	     :lookup-assertion `(typep ,parameter 'game))
+	     :type-assertion `(typep ,parameter 'game))
 
 Once that's done, you can annotate parameters with the `:game` label.
 
