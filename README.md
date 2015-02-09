@@ -5,22 +5,21 @@
 
 ### News
 
+- Fixed the buffering system so that slow POST requests that pause between headers and body are now handled properly
 - `define-closing-handler` and `define-stream-handler` have now been merged into `define-handler`. The new macro now has a `:close-socket?` keyword param that defaults to `t`.
 - House now depends on [:session-token](https://github.com/Inaimathi/session-token) and generates tokens without exhausting entropy
 - House exports `path->uri`
-- The `debug!` hooks now output `session-token`s for incoming requests
 
 ### Installation
 
 - If you haven't already done so, install [`quicklisp`](http://www.quicklisp.org/beta/).
-- You need to install [:session-token](https://github.com/Inaimathi/session-token). That can be done either through `asdf-install`, or by cloning the repo I just linked you into your `quicklisp/local-projects/` folder. All other dependencies of `:house` are `quicklisp`able.
 - Clone [this repo](https://github.com/Inaimathi/house) into `quicklisp/local-projects/`.
 - Hop into your lisp and run `(ql:quickload :house)`
 
 ### Usage
 ##### Quick start
 
-    (define-closing-handler (hello-world :content-type "text/plain") ()
+    (define-handler (hello-world :content-type "text/plain") ()
       "Hello world!")
 	(house:start 4040)
 
@@ -54,7 +53,7 @@ Requests for `"/name"` will now instead serve a `301 Moved Permanently` response
 
 You can specify desired argument types for your handlers. For example:
 
-    (define-closing-handler (handler) ((foo :json) (bar :integer)))
+    (define-handler (handler) ((foo :json) (bar :integer)))
        ...)
 
 You can then use `bar` as an integer and `foo` as a parsed JSON s-expression in the body of that handler. The built-in types are `:string`, `:integer`, `:json`, `:keyword`, `:list-of-keyword` and `:list-of-integer`. If you need a more specific type, you can use `define-http-type`. For example:
@@ -65,13 +64,13 @@ You can then use `bar` as an integer and `foo` as a parsed JSON s-expression in 
 
 Once that's done, you can annotate parameters with the `:game` label.
 
-    (define-closing-handler (handler) ((foo :game) ...) ...)
+    (define-handler (handler) ((foo :game) ...) ...)
 
 `foo` will then be looked up in `*game-table*`, and `assert-http`-ed to be of type `'game` before the handler body is evaluated.
 
 It's also possible to enforce arbitrary properties of parsed parameters. For instance
 
-    (define-closing-handler (handler) ((foo :integer (>= 64 foo 2) (evenp foo)))
+    (define-handler (handler) ((foo :integer (>= 64 foo 2) (evenp foo)))
        ...)
 
 ensures that `foo` will be an even integer between 2 and 64 (inclusive).
@@ -85,21 +84,19 @@ All this is entirely optional. If you don't care about it, just pass un-annotate
 Takes a port-number and starts the server listening on that port.
 
 #### Handlers
-###### `define-closing-handler`
+###### `define-handler`
 
-Defines a handler that will close its connection when it finishes sending. The handler body has access to three bound symbols in addition to its parameters:
+Defines a handler. The handler body has access to three bound symbols in addition to its parameters:
 
 - `sock`: the requesting socket (should only really be used for `subscribe!` calls, but you can also write things to it if you need to send stuff before the request proper)
 - `session`: the session belonging to the requesting user
 - `parameters`: the raw parameters `alist` (note that each expected parameter is also bound to the corresponding symbol)
 
+Depending on the keyword parameter `:close-socket?`, it may or may not close the incoming TCP stream after it responds.
+
 ###### `define-json-handler`
 
-Defines a `closing-handler` that responds with `"application/json"`, and automatically JSON-encodes its response.
-
-###### `define-stream-handler `
-
-Defines a handler that keeps its connection open when it finishes sending. It's meant to be used for event stream handlers. Has the same bound symbols as `define-closing-handler`.
+Defines a closing `handler` that responds with `"application/json"`, and automatically JSON-encodes its response.
 
 ###### `define-redirect-handler`
 
@@ -112,7 +109,7 @@ Defines a handler that very inefficiently responds with static files.
 #### Event Streams
 ###### `subscribe!`
 
-Subscribes the specified socket to the specified channel. Should only be used with the `define-stream-handler` macro, since the socket will need to be kept open for a subscription to be relevant.
+Subscribes the specified socket to the specified channel. Should only be used with stream handlers, since the socket will need to be kept open for a subscription to be relevant.
 
 ###### `publish!`
 
