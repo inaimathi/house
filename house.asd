@@ -11,7 +11,7 @@
 	       #:bordeaux-threads #:usocket #:flexi-streams
 	       #:cl-fad #:cl-ppcre #:optima #:cl-json
 
-	       #:session-token
+	       #:session-token #:trivial-features
 
 	       #:lisp-unit)
   :components ((:file "package")
