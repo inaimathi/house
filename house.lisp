@@ -54,9 +54,7 @@
 			  (not simple-error)) (e)
 			  (error! +500+ ready e))
 		   #+CCL(error (e) 
-			  (error! +500+ ready e))))
-		(t
-		 (setf (contents buf) nil)))))))
+			  (error! +500+ ready e)))))))))
 
 (defun line-terminated? (lst)
   (starts-with-subseq 
@@ -76,7 +74,8 @@
 	   when (line-terminated? (contents buffer))
 	   do (multiple-value-bind (parsed expecting) (parse buffer)
 		(setf (request buffer) parsed
-		      (expecting buffer) expecting)
+		      (expecting buffer) expecting
+		      (contents buffer) nil)
 		(return char))
 	   when (> (total-buffered buffer) +max-request-size+) return char
 	   finally (return char)))
