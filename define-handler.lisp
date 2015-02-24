@@ -98,12 +98,14 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     `(lambda (sock ,cookie? session parameters)
        (declare (ignorable session parameters))
        ,(arguments args
-		   `(let ((res (progn ,@body)))
+		   `(let ((res (progn ,@body))
+			  (stream (flex-stream sock)))
 		      (write! (make-instance 'response
 					     :keep-alive? t :content-type "text/event-stream" 
-					     :cookie (unless ,cookie? (token session))) sock)
-		      (write! (make-instance 'sse :data (or res "Listening...")) sock)
-		      (force-output (socket-stream sock)))))))
+					     :cookie (unless ,cookie? (token session))) stream)
+		      (crlf stream)
+		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
+		      (force-output stream))))))
 
 (defmacro bind-handler (name handler)
   (assert (symbolp name) nil "`name` must be a symbol")
