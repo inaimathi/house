@@ -1,13 +1,13 @@
-(defpackage :house  
+(defpackage :house
   (:use :cl #:optima #:cl-ppcre #:usocket #:lisp-unit)
   (:import-from #:alexandria :starts-with-subseq :with-gensyms)
   (:import-from #:flexi-streams :octet)
   (:import-from #:anaphora :aif :awhen :aand :it)
-  (:export 
+  (:export
    :define-handler
    :define-json-handler
 
-   :define-redirect-handler
+   :define-redirect-handler :redirect!
    :define-file-handler
 
    :define-http-type :parameter :restrictions

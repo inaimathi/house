@@ -46,18 +46,18 @@
 		 (remhash ready conns)
 		 (when (contents buf)
 		   (setf (parameters (request buf))
-			 (nconc (parse buf) (parameters (request buf)))))	     
+			 (nconc (parse buf) (parameters (request buf)))))
 		 (handler-case
 		     (handle-request ready (request buf))
 		   (http-assertion-error () (error! +400+ ready))
 		   #-CCL((and (not warning)
 			  (not simple-error)) (e)
 			  (error! +500+ ready e))
-		   #+CCL(error (e) 
+		   #+CCL(error (e)
 			  (error! +500+ ready e)))))))))
 
 (defun line-terminated? (lst)
-  (starts-with-subseq 
+  (starts-with-subseq
    #-windows(list #\linefeed #\return #\linefeed #\return)
    #+windows(list #\newline #\newline)
    lst))
@@ -133,14 +133,14 @@
   (flet ((write-ln (&rest sequences)
 	   (mapc (lambda (seq) (write-sequence seq stream)) sequences)
 	   (crlf stream)))
-    (write-ln "HTTP/1.1 " (response-code res))  
+    (write-ln "HTTP/1.1 " (response-code res))
     (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
     (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
     (awhen (cookie res)
 	   (write-ln "Set-Cookie: " it))
     (awhen (location res)
 	   (write-ln "Location: " it))
-    (when (keep-alive? res) 
+    (when (keep-alive? res)
       (write-ln "Connection: keep-alive")
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
     (awhen (body res)
@@ -159,7 +159,7 @@
 
 (defmethod error! ((err response) (sock usocket) &optional instance)
   (declare (ignorable instance))
-  (ignore-errors 
+  (ignore-errors
     (write! err sock)
     (socket-close sock)))
 
@@ -175,7 +175,7 @@
   (awhen (lookup channel *channels*)
     (setf (lookup channel *channels*)
 	  (loop for sock in it
-	     when (ignore-errors 
+	     when (ignore-errors
 		    (write! message sock)
 		    (force-output (socket-stream sock))
 		    sock)

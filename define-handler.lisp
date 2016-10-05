@@ -3,7 +3,7 @@
 ;;;;;;;;;; Parameter type parsing.
 ;;;;; Basics
 (defparameter *http-type-priority* (make-hash-table)
-  "Priority table for all parameter types. 
+  "Priority table for all parameter types.
 Types will be parsed from highest to lowest priority;
 parameters with a lower priority can refer to parameters of a higher priority.")
 
@@ -52,7 +52,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 ;;;;;;;;;; Constructing argument lookups
 (defun args-by-type-priority (args &optional (priority-table *http-type-priority*))
   (let ((cpy (copy-list args)))
-    (sort cpy #'<= 
+    (sort cpy #'<=
 	  :key (lambda (arg)
 		 (if (listp arg)
 		     (gethash (second arg) priority-table 0)
@@ -85,12 +85,16 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     `(lambda (sock ,cookie? session parameters)
        (declare (ignorable session parameters))
        ,(arguments args
-		   `(let ((res (make-instance 
-				'response 
-				:content-type ,content-type 
-				:cookie (unless ,cookie? (token session))
-				:body (progn ,@body))))
-		      (write! res sock)
+		   `(let* ((result (progn ,@body))
+			   (response
+			    (if (typep result 'response)
+				result
+				(make-instance
+				 'response
+				 :content-type ,content-type
+				 :cookie (unless ,cookie? (token session))
+				 :body result))))
+		      (write! response sock)
 		      (socket-close sock))))))
 
 (defmacro make-stream-handler ((&rest args) &body body)
@@ -101,7 +105,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		   `(let ((res (progn ,@body))
 			  (stream (flex-stream sock)))
 		      (write! (make-instance 'response
-					     :keep-alive? t :content-type "text/event-stream" 
+					     :keep-alive? t :content-type "text/event-stream"
 					     :cookie (unless ,cookie? (token session))) stream)
 		      (crlf stream)
 		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
@@ -128,8 +132,8 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 ;;; Don't use these in production. There are better ways.
 (defmethod define-file-handler ((path pathname) &key stem-from)
   (cond ((cl-fad:directory-exists-p path)
-	 (cl-fad:walk-directory 
-	  path 
+	 (cl-fad:walk-directory
+	  path
 	  (lambda (fname)
 	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
 	((cl-fad:file-exists-p path)
@@ -151,15 +155,17 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 (defmethod define-file-handler ((path string) &key stem-from)
   (define-file-handler (pathname path) :stem-from stem-from))
 
+(defun redirect! (target &key permanent?)
+  (make-instance
+   'response
+   :response-code (if permanent? "301 Moved Permanently" "307 Temporary Redirect")
+   :location target :content-type "text/plain" :body "Resource moved..."))
+
 (defmacro define-redirect-handler ((name &key permanent?) target)
   (with-gensyms (cookie?)
-    `(bind-handler 
+    `(bind-handler
       ,name
       (lambda (sock ,cookie? session parameters)
 	(declare (ignorable sock ,cookie? session parameters))
-	(write! (make-instance 
-		 'response :response-code ,(if permanent? "301 Moved Permanently" "307 Temporary Redirect")
-		 :location ,target :content-type "text/plain"
-		 :body "Resource moved...")
-		sock)
+	(write! (redirect! ,target :permanent? ,permanent?) sock)
 	(socket-close sock)))))
