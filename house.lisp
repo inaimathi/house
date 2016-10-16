@@ -121,7 +121,7 @@
 			      for s = (get-session! tok)
 			      when s do (return s))))
 	      (sess (aif check? it (new-session!))))
-	 (funcall it sock check? sess (parameters req)))
+	 (funcall it sock check? sess req))
        (error! +404+ sock)))
 
 (defun crlf (&optional (stream *standard-output*))

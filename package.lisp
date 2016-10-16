@@ -12,6 +12,8 @@
 
    :define-http-type :parameter :restrictions
 
+   :request :resource :headers :session-tokens :parameters
+
    :assert-http
    :root :sock :session :parameters
    :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup :path->uri
