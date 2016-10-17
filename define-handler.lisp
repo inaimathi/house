@@ -59,7 +59,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		     0)))))
 
 (defun arg-exp (arg-sym)
-  `(aif (cdr (assoc ,(->keyword arg-sym) parameters))
+  `(aif (cdr (assoc ,(->keyword arg-sym) (parameters request)))
 	(uri-decode it)
 	(error (make-instance 'http-assertion-error :assertion ',arg-sym))))
 
