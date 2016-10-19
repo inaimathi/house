@@ -5,6 +5,8 @@
 
 ### News
 
+- Handlers no longer expose the symbol `parameters`. Instead, they expose the symbol `request` (you can call `(parameters request)` to get the old `parameters` value). This is in the interest of supporting dispatch based on the `:host` header, but can also allow some other tricks.
+- Added `redirect!` primitive so that normal handlers can conditionally redirect to other pages
 - Fixed the buffering system so that slow POST requests that pause between headers and body are now handled properly
 - `define-closing-handler` and `define-stream-handler` have now been merged into `define-handler`. The new macro now has a `:close-socket?` keyword param that defaults to `t`.
 - House now depends on [:session-token](https://github.com/Inaimathi/session-token) and generates tokens without exhausting entropy
@@ -90,7 +92,11 @@ Defines a handler. The handler body has access to three bound symbols in additio
 
 - `sock`: the requesting socket (should only really be used for `subscribe!` calls, but you can also write things to it if you need to send stuff before the request proper)
 - `session`: the session belonging to the requesting user
-- `parameters`: the raw parameters `alist` (note that each expected parameter is also bound to the corresponding symbol)
+- `request`: the raw `request` object, with exported accessors `resource`, `headers` `session-tokens` and `paramteres`.
+	- `paramters` contains the raw `alist` of incoming HTTP parameters
+	- `resource` contains the raw URI, minus host and parameters
+	- `headers` contains the raw HTTP headers `alist` (of particular interest is the `:host` key)
+	- `session-tokens` contains the raw list of session tokens associated with this request
 
 Depending on the keyword parameter `:close-socket?`, it may or may not close the incoming TCP stream after it responds.
 
@@ -134,5 +140,4 @@ Publishes a message to all subscribers of the specified channel.
 ###### `root`
 ###### `sock`
 ###### `session`
-###### `parameters`
-
+###### `request`
