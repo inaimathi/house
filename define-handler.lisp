@@ -120,9 +120,11 @@ parameters with a lower priority can refer to parameters of a higher priority.")
        (setf (gethash ,uri *handlers*) ,handler))))
 
 (defmacro define-handler ((name &key (close-socket? t) (content-type "text/html")) (&rest args) &body body)
-  (if close-socket?
-      `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body))
-      `(bind-handler ,name (make-stream-handler ,args ,@body))))
+  `(insert-handler!
+    (process-uri ,name)
+    ,(if close-socket?
+	 `(make-closing-handler (:content-type ,content-type) ,args ,@body)
+	 `(make-stream-handler ,args ,@body))))
 
 (defmacro define-json-handler ((name) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
