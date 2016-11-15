@@ -1,4 +1,4 @@
-(in-package :cl-handlers)
+(in-package :house)
 
 ;;;;; A minimal, custom Trie
 ;;;;;;;; (It needs to allow for variables at each level, including prospective matching of the rest of a URI segment)
@@ -56,20 +56,7 @@
 
 ;;;;; And using it to structure our handler table
 (defclass handler-table ()
-  ((handlers :initform (make-trie) :initarg :handlers :reader handlers)
-   (error-handlers :initform (make-errors-table) :initarg :error-handlers :reader error-handlers)))
-
-(defun make-errors-table ()
-  (let ((tbl (make-hash-table)))
-    (mapc
-     (lambda (pair)
-       (setf
-	(gethash (first pair) tbl)
-	`(,(first pair) (:content-type "text/plain") (,(second pair)))))
-     '((400 "Request error")
-       (404 "Not found")
-       (500 "Something went wrong internally. Please make a note of it.")))
-    tbl))
+  ((handlers :initform (make-trie) :initarg :handlers :reader handlers)))
 
 (defun empty () (make-instance 'handler-table))
 
@@ -86,12 +73,6 @@
   (trie-lookup
    (cons method (split-at #\/ uri-string))
    (handlers handler-table)))
-
-(defun insert-error! (http-code error &key (handler-table *handler-table*))
-  (setf (gethash http-code (error-handlers handler-table)) error))
-
-(defun find-error (http-code &key (handler-table *handler-table*))
-  (gethash http-code (error-handlers handler-table)))
 
 (defmacro with-handler-table (tbl &body body)
   `(let ((*handler-table* ,tbl))

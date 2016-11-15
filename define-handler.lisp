@@ -111,14 +111,6 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
 		      (force-output stream))))))
 
-(defmacro bind-handler (name handler)
-  (assert (symbolp name) nil "`name` must be a symbol")
-  (let ((uri (if (eq name 'root) "/" (format nil "/~(~a~)" name))))
-    `(progn
-       (when (gethash ,uri *handlers*)
-	 (warn ,(format nil "Redefining handler '~a'" uri)))
-       (setf (gethash ,uri *handlers*) ,handler))))
-
 (defmacro define-handler ((name &key (close-socket? t) (content-type "text/html")) (&rest args) &body body)
   `(insert-handler!
     (process-uri ,name)
