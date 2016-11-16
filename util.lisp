@@ -1,5 +1,8 @@
 (in-package :house)
 
+(defun split-at (elem seq)
+  (split-sequence:split-sequence elem seq :remove-empty-subseqs t))
+
 (defun debug! (&optional (stream *standard-output*))
   (flet ((dbg (label &rest msg) (format stream ">>>> ~a~%~{~s~%----------~%~}~%" label msg)))
     (defmethod process-ready :after ((sock stream-server-usocket) conns)
@@ -10,9 +13,9 @@
 		    "CONNECTIONS: " (alexandria:hash-table-keys conns)))
     (defmethod flex-stream :before (sock)
 	       (dbg "Creating flexi-stream..." sock (get-peer-address sock) (get-peer-port sock)))
-    (defmethod handle-request :before (sock req) 
+    (defmethod handle-request :before (sock req)
 	       (dbg "Handling request..." sock req (resource req) (headers req) (session-tokens req) (parameters req)))
-    (defmethod handle-request :after (sock req) 
+    (defmethod handle-request :after (sock req)
 	       (dbg "Completed request..."))
     (defmethod buffer! :before (buf)
 	       (dbg "Buffering..." buf (tries buf)))
@@ -21,14 +24,14 @@
 		    (coerce (reverse (contents buf)) 'string))
 	       (when (> (tries buf) +max-buffer-tries+)
 		 (dbg "Needy buffer..." buf (tries buf) (coerce (reverse (contents buf)) 'string))))
-    (defmethod write! :before ((res response) sock) 
+    (defmethod write! :before ((res response) sock)
 	       (dbg "Writing response..."))
-    (defmethod error! :before (res sock &optional instance) 
+    (defmethod error! :before (res sock &optional instance)
 	       (dbg "Sending error response..."
 		    instance sock res (response-code res)))
-    (defmethod subscribe! :before (chan sock) 
+    (defmethod subscribe! :before (chan sock)
 	       (dbg "New subscriber" chan))
-    (defmethod publish! :before (chan msg) 
+    (defmethod publish! :before (chan msg)
 	       (dbg "Publishing to channel" chan msg))
     nil))
 
@@ -59,7 +62,7 @@
 (defmethod uri-decode ((thing null)) nil)
 
 (defmethod uri-decode ((string string))
-  (coerce 
+  (coerce
    (loop with len = (length string) and i = 0
       until (>= i len)
       for char = (aref string i) for inc-by = 1

@@ -70,9 +70,10 @@
   handler-table)
 
 (defun find-handler (method uri-string &key (handler-table *handler-table*))
-  (trie-lookup
-   (cons method (split-at #\/ uri-string))
-   (handlers handler-table)))
+  (let ((split (split-at #\/ uri-string))
+	(handlers (handlers handler-table)))
+    (or (trie-lookup (cons method split) handlers)
+	(trie-lookup (cons :any split) handlers))))
 
 (defmacro with-handler-table (tbl &body body)
   `(let ((*handler-table* ,tbl))

@@ -111,12 +111,21 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
 		      (force-output stream))))))
 
-(defmacro define-handler ((name &key (close-socket? t) (content-type "text/html")) (&rest args) &body body)
-  `(insert-handler!
-    (process-uri ,name)
-    ,(if close-socket?
-	 `(make-closing-handler (:content-type ,content-type) ,args ,@body)
-	 `(make-stream-handler ,args ,@body))))
+(defun parse-var (str)
+  (let ((pair (split-at #\= (string-upcase (subseq str 1)))))
+    (if (second pair)
+	(list (intern (first pair)) (intern (second pair) :keyword))
+	(intern (first pair)))))
+
+(defmacro define-handler ((name &key (close-socket? t) (content-type "text/html") (method :any)) (&rest args) &body body)
+  (let* ((processed (process-uri name))
+	 (path-vars (loop for v in processed when (path-var? v) collect (parse-var v)))
+	 (full-args (append args path-vars)))
+    `(insert-handler!
+      (list ,@(cons method processed))
+      ,(if close-socket?
+	   `(make-closing-handler (:content-type ,content-type) ,full-args ,@body)
+	   `(make-stream-handler ,full-args ,@body)))))
 
 (defmacro define-json-handler ((name) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
@@ -131,6 +140,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 	  (lambda (fname)
 	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
 	((cl-fad:file-exists-p path)
+	 ;; FIXME
 	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
 	       (let ((mime (path->mimetype path)))
 		 (lambda (sock cookie? session request)
@@ -155,6 +165,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
    :response-code (if permanent? "301 Moved Permanently" "307 Temporary Redirect")
    :location target :content-type "text/plain" :body "Resource moved..."))
 
+;; FIXME
 (defmacro define-redirect-handler ((name &key permanent?) target)
   (with-gensyms (cookie?)
     `(bind-handler

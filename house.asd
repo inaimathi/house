@@ -9,7 +9,7 @@
 	       #:anaphora
 
 	       #:bordeaux-threads #:usocket #:flexi-streams
-	       #:cl-fad #:cl-ppcre #:optima #:cl-json
+	       #:cl-fad #:cl-ppcre #:optima #:cl-json #:split-sequence
 
 	       #:session-token #:trivial-features
 
