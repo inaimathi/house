@@ -151,7 +151,6 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 	  (lambda (fname)
 	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
 	((cl-fad:file-exists-p path)
-	 ;; FIXME
 	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
 	       (let ((mime (path->mimetype path)))
 		 (lambda (sock cookie? session request)
