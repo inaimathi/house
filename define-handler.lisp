@@ -117,15 +117,26 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 	(list (intern (first pair)) (intern (second pair) :keyword))
 	(intern (first pair)))))
 
+(defun check-for-dupes (full-params)
+  (let ((dupes (make-hash-table)))
+    (loop for arg in full-params
+       for a = (if (consp arg) (car arg) arg)
+       do (incf (gethash a dupes 0)))
+    (assert (every (lambda (n) (= n 1)) (alexandria:hash-table-values dupes))
+	    nil "Found dupe in parameters: ~s"
+	    (loop for k being the hash-keys of dupes for v being the hash-values of dupes
+	       when (/= v 1) collect k))))
+
 (defmacro define-handler ((name &key (close-socket? t) (content-type "text/html") (method :any)) (&rest args) &body body)
   (let* ((processed (process-uri name))
 	 (path-vars (loop for v in processed when (path-var? v) collect (parse-var v)))
-	 (full-args (append args path-vars)))
+	 (full-params (append args path-vars)))
+    (check-for-dupes full-params)
     `(insert-handler!
       (list ,@(cons method processed))
       ,(if close-socket?
-	   `(make-closing-handler (:content-type ,content-type) ,full-args ,@body)
-	   `(make-stream-handler ,full-args ,@body)))))
+	   `(make-closing-handler (:content-type ,content-type) ,full-params ,@body)
+	   `(make-stream-handler ,full-params ,@body)))))
 
 (defmacro define-json-handler ((name) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
