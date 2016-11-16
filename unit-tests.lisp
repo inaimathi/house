@@ -4,7 +4,7 @@
       *print-summary* t
       *print-errors* t)
 
-(define-test parameter-parsing 
+(define-test parameter-parsing
   (assert-equal '((:a . "1")) (parse-params "a=1"))
   (assert-equal '((:a . "1") (:b . "2")) (parse-params "a=1&b=2"))
   (assert-equal '((:longer . "parameter names") (:look . "something like this"))
@@ -22,7 +22,7 @@
 
 (define-test request-parsing
   ;; Fail on older HTTP versions
-  (assert-error 'http-assertion-error 
+  (assert-error 'http-assertion-error
 		(parse "GET /index.html HTTP/0.9
 Host: www.example.com
 
@@ -82,7 +82,7 @@ test=post
     (assert-equal '(:test . "get") (assoc :test (parameters req)))))
 
 (defmethod read-all ((stream stream))
-  (coerce 
+  (coerce
    (loop for char = (read-char-no-hang stream nil :eof)
       until (or (null char) (eq char :eof)) collect char into msg
       finally (return (values msg char)))
@@ -110,7 +110,7 @@ test=post
     (unwind-protect
 	 (labels ((parse-res (res)
 		    (destructuring-bind (hdr bdy) (cl-ppcre:split "\\r\\n\\r\\n" res)
-		      (list (cl-ppcre:split "\\r\\n" hdr) 
+		      (list (cl-ppcre:split "\\r\\n" hdr)
 			    (cl-ppcre:regex-replace "\\r\\n" bdy ""))))
 		  (req (&rest lines)
 		    (with-client-socket (sock stream "localhost" port)
@@ -132,7 +132,5 @@ test=post
 	   (destructuring-bind (headers body) (req "POST /arg-test-two HTTP/1.1" "" "a=test&b=blah&key-list=%5B%22one%22%2C%22two%22%2C%22three%22%5D&json=%5B%22one%22%2C%22two%22%2C%22three%22%5D")
 	     (assert-equal "HTTP/1.1 200 OK" (first headers))
 	     (assert-equal "\"test\" \"blah\" (:ONE :TWO :THREE) (\"one\" \"two\" \"three\")" body)))
-      (ignore-errors 
-	(loop for h in (list "/test" "/arg-test" "/arg-test-two")
-	   do (remhash h *handlers*))
+      (ignore-errors
 	(bt:destroy-thread server)))))

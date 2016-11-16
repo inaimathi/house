@@ -79,7 +79,6 @@ parameters with a lower priority can refer to parameters of a higher priority.")
      finally (return res)))
 
 ;;;;;;;;;; Defining Handlers
-(defparameter *handlers* (make-hash-table :test 'equal))
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session request)
