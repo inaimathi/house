@@ -62,8 +62,8 @@
 
 (defparameter *handler-table* (empty))
 
-(defun process-uri (uri)
-  (split-at #\/ (symbol-name uri)))
+(defmethod process-uri ((uri string)) (split-at #\/ (string-upcase uri)))
+(defmethod process-uri ((uri symbol)) (process-uri (symbol-name uri)))
 
 (defun insert-handler! (uri handler-fn &key (handler-table *handler-table*))
   (trie-insert! uri handler-fn (handlers handler-table))

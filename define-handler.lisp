@@ -144,24 +144,25 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 
 ;;;;; Special case handlers
 ;;; Don't use these in production. There are better ways.
-(defmethod define-file-handler ((path pathname) &key stem-from)
+(defmethod define-file-handler ((path pathname) &key stem-from (method :any))
   (cond ((cl-fad:directory-exists-p path)
 	 (cl-fad:walk-directory
 	  path
 	  (lambda (fname)
-	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
+	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
 	((cl-fad:file-exists-p path)
-	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
-	       (let ((mime (path->mimetype path)))
-		 (lambda (sock cookie? session request)
-		   (declare (ignore cookie? session request))
-		   (if (cl-fad:file-exists-p path)
-		       (with-open-file (s path :direction :input :element-type 'octet)
-			 (let ((buf (make-array (file-length s) :element-type 'octet)))
-			   (read-sequence buf s)
-			   (write! (make-instance 'response :content-type mime :body buf) sock))
-			 (socket-close sock))
-		       (error! +404+ sock))))))
+	 (insert-handler!
+	  (cons method (process-uri (path->uri path :stem-from stem-from)))
+	  (let ((mime (path->mimetype path)))
+	    (lambda (sock cookie? session request)
+	      (declare (ignore cookie? session request))
+	      (if (cl-fad:file-exists-p path)
+		  (with-open-file (s path :direction :input :element-type 'octet)
+		    (let ((buf (make-array (file-length s) :element-type 'octet)))
+		      (read-sequence buf s)
+		      (write! (make-instance 'response :content-type mime :body buf) sock))
+		    (socket-close sock))
+		  (error! +404+ sock))))))
 	(t
 	 (warn "Tried serving nonexistent file '~a'" path)))
   nil)

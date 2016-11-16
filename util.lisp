@@ -78,7 +78,7 @@
    'string))
 
 (defmethod path->uri ((path pathname) &key stem-from)
-  (format nil "/~{~a/~}~a.~a"
+  (format nil "/~{~a/~}~a~@[.~a~]"
 	  (if stem-from
 	      (member stem-from (cdr (pathname-directory path)) :test #'string=)
 	      (cdr (pathname-directory path)))
