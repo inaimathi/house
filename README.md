@@ -5,12 +5,12 @@
 
 ### News
 
+- Handlers now accept, and properly handle path parameters. For instance, `(define-handler (hello-world/-user=string :content-type "text/plain") (format nil "Hello there, ~a!" user))` will define a handler that accepts requests for `/hello-world/<some path component>`, runs the usual checks ensuring that it's a valid string, and binds its value to the symbol `user`. The body of that handler will do exactly what you think it should.
+- Handlers now accept, and properly handle HTTP methods as an additional keyword parameter. Additionally, this can be set to :any (in which case the defined handler will handle any HTTP method). For instance `(define-handler (hello-world :method :get) ...)` will create a handler that will only respond to GET requests, and nots POSTs, DELETEs or others.
 - Handlers no longer expose the symbol `parameters`. Instead, they expose the symbol `request` (you can call `(parameters request)` to get the old `parameters` value). This is in the interest of supporting dispatch based on the `:host` header, but can also allow some other tricks.
 - Added `redirect!` primitive so that normal handlers can conditionally redirect to other pages
 - Fixed the buffering system so that slow POST requests that pause between headers and body are now handled properly
 - `define-closing-handler` and `define-stream-handler` have now been merged into `define-handler`. The new macro now has a `:close-socket?` keyword param that defaults to `t`.
-- House now depends on [:session-token](https://github.com/Inaimathi/session-token) and generates tokens without exhausting entropy
-- House exports `path->uri`
 
 ### Installation
 
@@ -23,9 +23,11 @@
 
     (define-handler (hello-world :content-type "text/plain") ()
       "Hello world!")
+	(define-handler (hello-you/-name=string) ()
+	  (format nil "Hello there, ~a!" name))
 	(house:start 4040)
 
-You should then be able to hop over to a browser and visit `http://localhost:4040/hello-world` to see the plaintext `"Hello world!"` response.
+You should then be able to hop over to a browser and visit `http://localhost:4040/hello-world` to see the plaintext `"Hello world!"` response, or `http:localhost:4040/hello-you/James` to see the plaintext `"Hello there, James!"` (this may or may not make sense to do, depending on whether your name is James).
 
 ##### Threaded quick start
 
