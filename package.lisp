@@ -24,6 +24,8 @@
 
 (setf *random-state* (make-random-state t))
 
+(defparameter *cookie-domains* nil)
+
 (defparameter +max-request-size+ 50000)
 (defparameter +max-buffer-tries+ 10)
 (defparameter +max-request-age+ 30)

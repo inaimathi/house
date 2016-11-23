@@ -5,6 +5,7 @@
 
 ### News
 
+- There is now a `*cookie-domains*` variable that expects a list of strings representing domains where cookies should be valid. It defaults to `nil`. If left unset, `house` will do the default thing and set one cookie for the default domain. If you set it to a list of strings, it will explicitly emit `domain=` tags for cookies, and send the cookie token for each specified domain. *(Shamelessly adding features for [congregate](https://github.com/inaimathi/cl-congregate) here :p)*
 - The default `write!` method now outputs CORS headers by default (and there is no way to turn it off at the moment)
 - Handlers now accept, and properly handle path parameters. For instance, `(define-handler (hello-world/-user=string :content-type "text/plain") (format nil "Hello there, ~a!" user))` will define a handler that accepts requests for `/hello-world/<some path component>`, runs the usual checks ensuring that it's a valid string, and binds its value to the symbol `user`. The body of that handler will do exactly what you think it should.
 - Handlers now accept, and properly handle HTTP methods as an additional keyword parameter. Additionally, this can be set to :any (in which case the defined handler will handle any HTTP method). For instance `(define-handler (hello-world :method :get) ...)` will create a handler that will only respond to GET requests, and nots POSTs, DELETEs or others.
