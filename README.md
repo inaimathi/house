@@ -5,6 +5,7 @@
 
 ### News
 
+- The default `write!` method now outputs CORS headers by default (and there is no way to turn it off at the moment)
 - Handlers now accept, and properly handle path parameters. For instance, `(define-handler (hello-world/-user=string :content-type "text/plain") (format nil "Hello there, ~a!" user))` will define a handler that accepts requests for `/hello-world/<some path component>`, runs the usual checks ensuring that it's a valid string, and binds its value to the symbol `user`. The body of that handler will do exactly what you think it should.
 - Handlers now accept, and properly handle HTTP methods as an additional keyword parameter. Additionally, this can be set to :any (in which case the defined handler will handle any HTTP method). For instance `(define-handler (hello-world :method :get) ...)` will create a handler that will only respond to GET requests, and nots POSTs, DELETEs or others.
 - Handlers no longer expose the symbol `parameters`. Instead, they expose the symbol `request` (you can call `(parameters request)` to get the old `parameters` value). This is in the interest of supporting dispatch based on the `:host` header, but can also allow some other tricks.
