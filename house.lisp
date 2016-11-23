@@ -137,6 +137,7 @@
     (write-ln "HTTP/1.1 " (response-code res))
     (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
     (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
+    (write-ln "Access-Control-Allow-Origin: *")
     (awhen (cookie res)
 	   (write-ln "Set-Cookie: " it))
     (awhen (location res)
