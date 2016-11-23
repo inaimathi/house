@@ -26,7 +26,8 @@
    (session-values :reader session-values :initform (make-hash-table :test 'equal))))
 
 (defclass request ()
-  ((resource :accessor resource :initarg :resource)
+  ((http-method :accessor http-method :initarg :http-method)
+   (resource :accessor resource :initarg :resource)
    (headers :accessor headers :initarg :headers :initform nil)
    (session-tokens :accessor session-tokens :initarg :session-tokens :initform nil)
    (parameters :accessor parameters :initarg :parameters :initform nil)))

@@ -79,7 +79,6 @@ parameters with a lower priority can refer to parameters of a higher priority.")
      finally (return res)))
 
 ;;;;;;;;;; Defining Handlers
-(defparameter *handlers* (make-hash-table :test 'equal))
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session request)
@@ -111,18 +110,32 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
 		      (force-output stream))))))
 
-(defmacro bind-handler (name handler)
-  (assert (symbolp name) nil "`name` must be a symbol")
-  (let ((uri (if (eq name 'root) "/" (format nil "/~(~a~)" name))))
-    `(progn
-       (when (gethash ,uri *handlers*)
-	 (warn ,(format nil "Redefining handler '~a'" uri)))
-       (setf (gethash ,uri *handlers*) ,handler))))
+(defun parse-var (str)
+  (let ((pair (split-at #\= (string-upcase (subseq str 1)))))
+    (if (second pair)
+	(list (intern (first pair)) (intern (second pair) :keyword))
+	(intern (first pair)))))
 
-(defmacro define-handler ((name &key (close-socket? t) (content-type "text/html")) (&rest args) &body body)
-  (if close-socket?
-      `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body))
-      `(bind-handler ,name (make-stream-handler ,args ,@body))))
+(defun check-for-dupes (full-params)
+  (let ((dupes (make-hash-table)))
+    (loop for arg in full-params
+       for a = (if (consp arg) (car arg) arg)
+       do (incf (gethash a dupes 0)))
+    (assert (every (lambda (n) (= n 1)) (alexandria:hash-table-values dupes))
+	    nil "Found dupe in parameters: ~s"
+	    (loop for k being the hash-keys of dupes for v being the hash-values of dupes
+	       when (/= v 1) collect k))))
+
+(defmacro define-handler ((name &key (close-socket? t) (content-type "text/html") (method :any)) (&rest args) &body body)
+  (let* ((processed (process-uri name))
+	 (path-vars (loop for v in processed when (path-var? v) collect (parse-var v)))
+	 (full-params (append args path-vars)))
+    (check-for-dupes full-params)
+    `(insert-handler!
+      (list ,@(cons method processed))
+      ,(if close-socket?
+	   `(make-closing-handler (:content-type ,content-type) ,full-params ,@body)
+	   `(make-stream-handler ,full-params ,@body)))))
 
 (defmacro define-json-handler ((name) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
@@ -130,24 +143,25 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 
 ;;;;; Special case handlers
 ;;; Don't use these in production. There are better ways.
-(defmethod define-file-handler ((path pathname) &key stem-from)
+(defmethod define-file-handler ((path pathname) &key stem-from (method :any))
   (cond ((cl-fad:directory-exists-p path)
 	 (cl-fad:walk-directory
 	  path
 	  (lambda (fname)
-	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
+	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
 	((cl-fad:file-exists-p path)
-	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
-	       (let ((mime (path->mimetype path)))
-		 (lambda (sock cookie? session request)
-		   (declare (ignore cookie? session request))
-		   (if (cl-fad:file-exists-p path)
-		       (with-open-file (s path :direction :input :element-type 'octet)
-			 (let ((buf (make-array (file-length s) :element-type 'octet)))
-			   (read-sequence buf s)
-			   (write! (make-instance 'response :content-type mime :body buf) sock))
-			 (socket-close sock))
-		       (error! +404+ sock))))))
+	 (insert-handler!
+	  (cons method (process-uri (path->uri path :stem-from stem-from)))
+	  (let ((mime (path->mimetype path)))
+	    (lambda (sock cookie? session request)
+	      (declare (ignore cookie? session request))
+	      (if (cl-fad:file-exists-p path)
+		  (with-open-file (s path :direction :input :element-type 'octet)
+		    (let ((buf (make-array (file-length s) :element-type 'octet)))
+		      (read-sequence buf s)
+		      (write! (make-instance 'response :content-type mime :body buf) sock))
+		    (socket-close sock))
+		  (error! +404+ sock))))))
 	(t
 	 (warn "Tried serving nonexistent file '~a'" path)))
   nil)
@@ -161,10 +175,10 @@ parameters with a lower priority can refer to parameters of a higher priority.")
    :response-code (if permanent? "301 Moved Permanently" "307 Temporary Redirect")
    :location target :content-type "text/plain" :body "Resource moved..."))
 
-(defmacro define-redirect-handler ((name &key permanent?) target)
+(defmacro define-redirect-handler ((name &key permanent? (method :any)) target)
   (with-gensyms (cookie?)
-    `(bind-handler
-      ,name
+    `(insert-handler!
+      (list ,@(cons method (process-uri name)))
       (lambda (sock ,cookie? session request)
 	(declare (ignorable sock ,cookie? session request))
 	(write! (redirect! ,target :permanent? ,permanent?) sock)
