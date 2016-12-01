@@ -10,7 +10,10 @@
 (defun any-vars? (trie)
   (> (hash-table-count (trie-vars trie)) 0))
 
-(defun path-var? (str) (and (stringp str) (eql #\- (char str 0))))
+(defun path-var? (str)
+  (and (stringp str)
+       (> (length str) 0)
+       (eql #\- (char str 0))))
 
 (defun var-key (str)
   (let ((pair (split-at #\= (string-upcase (subseq str 1)))))
