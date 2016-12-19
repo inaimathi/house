@@ -1,6 +1,6 @@
 (in-package #:house)
 
-(defparameter *sessions* (make-hash-table :test 'equal))
+(defparameter *sessions* (make-hash-table :test 'equal :size 2000))
 (defparameter *new-session-hook* nil)
 
 (defmethod new-session-hook! ((callback function))
@@ -11,8 +11,8 @@
 
 (let ((gen nil))
   (defun new-session-token! ()
-    (unless gen 
-      (setf gen (session-token:make-generator 
+    (unless gen
+      (setf gen (session-token:make-generator
 		 :token-length 64
 		 :initial-seed #-windows (session-token:init-kernel-seed) #+windows (session-token:init-common-lisp-random-seed))))
     #+windows (warn "Running on Windows; using insecure session tokens")
@@ -29,6 +29,10 @@
 	 do (funcall hook session))
       session)))
 
+(declaim (inline idling?))
+(defun idling? (sess)
+  (> (- (get-universal-time) (slot-value sess 'last-poked)) +max-session-idle+))
+
 (defun get-session! (token)
   (awhen (gethash token *sessions*)
     (if (idling? it)
@@ -40,9 +44,6 @@
      for v being the hash-values of *sessions*
      when (idling? v) do (remhash k *sessions*)))
 
-(defmethod idling? ((sess session))
-  (> (- (get-universal-time) (last-poked sess)) +max-session-idle+))
-
 (defmethod poke! ((sess session))
-  (setf (last-poked sess) (get-universal-time))
+  (setf (slot-value sess 'last-poked) (get-universal-time))
   sess)

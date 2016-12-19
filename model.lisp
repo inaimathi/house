@@ -21,7 +21,7 @@
 
 (defclass session ()
   ((started :reader started :initform (get-universal-time))
-   (last-poked :accessor last-poked :initform (get-universal-time))
+   (last-poked :initform (get-universal-time))
    (token :reader token :initarg :token)
    (session-values :reader session-values :initform (make-hash-table :test 'equal))))
 
