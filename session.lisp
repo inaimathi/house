@@ -18,16 +18,14 @@
     #+windows (warn "Running on Windows; using insecure session tokens")
     (funcall gen)))
 
-(let ((session-count 0))
-  (defun new-session! ()
-    (when (>= (incf session-count) +clean-sessions-every+)
-      (setf session-count 0)
-      (clean-sessions!))
-    (let ((session (make-instance 'session :token (new-session-token!))))
-      (setf (gethash (token session) *sessions*) session)
-      (loop for hook in *new-session-hook*
-	 do (funcall hook session))
-      session)))
+(defun new-session! ()
+  (when (zerop (random +clean-sessions-every+))
+    (clean-sessions!))
+  (let ((session (make-instance 'session :token (new-session-token!))))
+    (setf (gethash (token session) *sessions*) session)
+    (loop for hook in *new-session-hook*
+       do (funcall hook session))
+    session))
 
 (declaim (inline idling?))
 (defun idling? (sess)
