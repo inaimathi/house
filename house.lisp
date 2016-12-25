@@ -58,8 +58,8 @@
 
 (defun line-terminated? (lst)
   (starts-with-subseq
-   #-windows(list #\linefeed #\return #\linefeed #\return)
-   #+windows(list #\newline #\newline)
+   #-windows'(#\linefeed #\return #\linefeed #\return)
+   #+windows'(#\newline #\newline)
    lst))
 
 (defmethod buffer! ((buffer buffer))
@@ -71,7 +71,11 @@
 	   do (push char (contents buffer))
 	   do (incf (total-buffered buffer))
 	   when (request buffer) do (decf (expecting buffer))
-	   when (line-terminated? (contents buffer))
+	   when (and
+		 (or (char= char #\linefeed)
+		     (char= char #\return)
+		     #+windows(char= char #\newline))
+		 (line-terminated? (contents buffer)))
 	   do (multiple-value-bind (parsed expecting) (parse buffer)
 		(setf (request buffer) parsed
 		      (expecting buffer) expecting
@@ -130,6 +134,7 @@
 	  (funcall handler sock check? sess req))
 	(error! +404+ sock))))
 
+(declaim (inline crlf))
 (defun crlf (&optional (stream *standard-output*))
   (write-char #\return stream)
   (write-char #\linefeed stream)
