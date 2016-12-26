@@ -71,10 +71,8 @@
 	   do (push char (contents buffer))
 	   do (incf (total-buffered buffer))
 	   when (request buffer) do (decf (expecting buffer))
-	   when (and
-		 (or (char= char #\linefeed)
-		     (char= char #\return)
-		     #+windows(char= char #\newline))
+	   when (and #-windows(char= char #\linefeed)
+		     #+windows(char= char #\newline)
 		 (line-terminated? (contents buffer)))
 	   do (multiple-value-bind (parsed expecting) (parse buffer)
 		(setf (request buffer) parsed
