@@ -54,7 +54,6 @@
 (defmethod (setf lookup) (new-value key (hash hash-table))
   (setf (gethash key hash) new-value))
 
-(declaim (inline flex-stream))
 (defun flex-stream (sock)
   (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8))
 

@@ -22,6 +22,8 @@
 
 (in-package :house)
 
+(declaim (inline crlf write-ln idling? flex-stream))
+
 (setf *random-state* (make-random-state t))
 
 (defparameter *cookie-domains* nil)

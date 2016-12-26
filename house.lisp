@@ -134,13 +134,13 @@
 	  (funcall handler sock check? sess req))
 	(error! +404+ sock))))
 
-(declaim (inline crlf))
 (defun crlf (&optional (stream *standard-output*))
   (write-char #\return stream)
   (write-char #\linefeed stream)
   (values))
 
 (defun write-ln (stream &rest sequences)
+  (declare (optimize space speed))
   (dolist (s sequences) (write-sequence s stream))
   (crlf stream))
 
@@ -170,13 +170,10 @@
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
 	  (id res) (event res) (retry res) (data res)))
 
-(defmethod write! (res (sock usocket))
-  (write! res (flex-stream sock)))
-
 (defmethod error! ((err response) (sock usocket) &optional instance)
   (declare (ignorable instance))
   (ignore-errors
-    (write! err sock)
+    (write! err (flex-stream sock))
     (socket-close sock)))
 
 ;;;;; Channel-related
@@ -192,7 +189,7 @@
     (setf (lookup channel *channels*)
 	  (loop for sock in it
 	     when (ignore-errors
-		    (write! message sock)
+		    (write! message (flex-stream sock))
 		    (force-output (socket-stream sock))
 		    sock)
 	     collect it))))

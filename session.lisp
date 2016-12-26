@@ -27,7 +27,6 @@
        do (funcall hook session))
     session))
 
-(declaim (inline idling?))
 (defun idling? (sess)
   (> (- (get-universal-time) (slot-value sess 'last-poked)) +max-session-idle+))
 
