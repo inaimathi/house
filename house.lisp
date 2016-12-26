@@ -58,8 +58,8 @@
 
 (defun line-terminated? (lst)
   (starts-with-subseq
-   #-windows(list #\linefeed #\return #\linefeed #\return)
-   #+windows(list #\newline #\newline)
+   #-windows'(#\linefeed #\return #\linefeed #\return)
+   #+windows'(#\newline #\newline)
    lst))
 
 (defmethod buffer! ((buffer buffer))
@@ -71,7 +71,9 @@
 	   do (push char (contents buffer))
 	   do (incf (total-buffered buffer))
 	   when (request buffer) do (decf (expecting buffer))
-	   when (line-terminated? (contents buffer))
+	   when (and #-windows(char= char #\linefeed)
+		     #+windows(char= char #\newline)
+		 (line-terminated? (contents buffer)))
 	   do (multiple-value-bind (parsed expecting) (parse buffer)
 		(setf (request buffer) parsed
 		      (expecting buffer) expecting
@@ -135,42 +137,41 @@
   (write-char #\linefeed stream)
   (values))
 
+(defun write-ln (stream &rest sequences)
+  (declare (optimize space speed))
+  (dolist (s sequences) (write-sequence s stream))
+  (crlf stream))
+
 (defmethod write! ((res response) (stream stream))
-  (flet ((write-ln (&rest sequences)
-	   (mapc (lambda (seq) (write-sequence seq stream)) sequences)
-	   (crlf stream)))
-    (write-ln "HTTP/1.1 " (response-code res))
-    (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
-    (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
-    (write-ln "Access-Control-Allow-Origin: *")
-    (awhen (cookie res)
-      (if (null *cookie-domains*)
-	  (write-ln "Set-Cookie: name=" it)
-	  (loop for d in *cookie-domains*
-	     do (write-ln "Set-Cookie: name=" it "; domain=" d))))
-    (awhen (location res)
-      (write-ln "Location: " it))
-    (when (keep-alive? res)
-      (write-ln "Connection: keep-alive")
-      (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-    (awhen (body res)
-	   (write-ln "Content-Length: " (write-to-string (length it)))
-	   #-windows(crlf stream)
-	   #+windows(format stream "~%")
-	   (write-ln it))
-    (values)))
+  (write-ln stream "HTTP/1.1 " (response-code res))
+  (write-ln stream "Content-Type: " (content-type res) "; charset=" (charset res))
+  (write-ln stream "Cache-Control: no-cache, no-store, must-revalidate")
+  (write-ln stream "Access-Control-Allow-Origin: *")
+  (awhen (cookie res)
+    (if (null *cookie-domains*)
+	(write-ln stream "Set-Cookie: name=" it)
+	(loop for d in *cookie-domains*
+	   do (write-ln stream "Set-Cookie: name=" it "; domain=" d))))
+  (awhen (location res)
+    (write-ln stream "Location: " it))
+  (when (keep-alive? res)
+    (write-ln stream "Connection: keep-alive")
+    (write-ln stream "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
+  (awhen (body res)
+    (write-ln stream "Content-Length: " (write-to-string (length it)))
+    #-windows(crlf stream)
+    #+windows(format stream "~%")
+    (write-ln stream it))
+  (values))
 
 (defmethod write! ((res sse) (stream stream))
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
 	  (id res) (event res) (retry res) (data res)))
 
-(defmethod write! (res (sock usocket))
-  (write! res (flex-stream sock)))
-
 (defmethod error! ((err response) (sock usocket) &optional instance)
   (declare (ignorable instance))
   (ignore-errors
-    (write! err sock)
+    (write! err (flex-stream sock))
     (socket-close sock)))
 
 ;;;;; Channel-related
@@ -186,7 +187,7 @@
     (setf (lookup channel *channels*)
 	  (loop for sock in it
 	     when (ignore-errors
-		    (write! message sock)
+		    (write! message (flex-stream sock))
 		    (force-output (socket-stream sock))
 		    sock)
 	     collect it))))

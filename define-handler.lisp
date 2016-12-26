@@ -93,7 +93,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 				 :content-type ,content-type
 				 :cookie (unless ,cookie? (token session))
 				 :body result))))
-		      (write! response sock)
+		      (write! response (flex-stream sock))
 		      (socket-close sock))))))
 
 (defmacro make-stream-handler ((&rest args) &body body)
@@ -103,11 +103,16 @@ parameters with a lower priority can refer to parameters of a higher priority.")
        ,(arguments args
 		   `(let ((res (progn ,@body))
 			  (stream (flex-stream sock)))
-		      (write! (make-instance 'response
-					     :keep-alive? t :content-type "text/event-stream"
-					     :cookie (unless ,cookie? (token session))) stream)
+		      (write!
+		       (make-instance
+			'response
+			:keep-alive? t :content-type "text/event-stream"
+			:cookie (unless ,cookie? (token session)))
+		       stream)
 		      (crlf stream)
-		      (write! (make-instance 'sse :data (or res "Listening...")) stream)
+		      (write!
+		       (make-instance 'sse :data (or res "Listening..."))
+		       stream)
 		      (force-output stream))))))
 
 (defun parse-var (str)
@@ -159,7 +164,9 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 		  (with-open-file (s path :direction :input :element-type 'octet)
 		    (let ((buf (make-array (file-length s) :element-type 'octet)))
 		      (read-sequence buf s)
-		      (write! (make-instance 'response :content-type mime :body buf) sock))
+		      (write!
+		       (make-instance 'response :content-type mime :body buf)
+		       (flex-stream sock)))
 		    (socket-close sock))
 		  (error! +404+ sock))))))
 	(t
@@ -181,5 +188,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
       (list ,@(cons method (process-uri name)))
       (lambda (sock ,cookie? session request)
 	(declare (ignorable sock ,cookie? session request))
-	(write! (redirect! ,target :permanent? ,permanent?) sock)
+	(write!
+	 (redirect! ,target :permanent? ,permanent?)
+	 (flex-stream sock))
 	(socket-close sock)))))

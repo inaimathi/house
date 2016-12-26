@@ -11,8 +11,6 @@
     (defmethod process-ready :before ((sock stream-usocket) conns)
 	       (dbg "Preparing to buffer..." sock
 		    "CONNECTIONS: " (alexandria:hash-table-keys conns)))
-    (defmethod flex-stream :before (sock)
-	       (dbg "Creating flexi-stream..." sock (get-peer-address sock) (get-peer-port sock)))
     (defmethod handle-request :before (sock req)
 	       (dbg "Handling request..." sock req (resource req) (headers req) (session-tokens req) (parameters req)))
     (defmethod handle-request :after (sock req)
@@ -56,7 +54,7 @@
 (defmethod (setf lookup) (new-value key (hash hash-table))
   (setf (gethash key hash) new-value))
 
-(defmethod flex-stream ((sock usocket))
+(defun flex-stream (sock)
   (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8))
 
 (defmethod uri-decode ((thing null)) nil)
