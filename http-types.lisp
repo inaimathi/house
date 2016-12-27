@@ -10,33 +10,39 @@
 (defmethod type-assertion (parameter type) nil)
 
 ;;;;; Definition macro
-(defmacro define-http-type ((type &key (priority 0)) &key type-expression type-assertion)
+(defun make-http-type-expander (type)
+  (optima.extra:lambda-ematch
+    ((list* (and method-name (or :type-expression :type-assertion)) (list parameter) method-body)
+     `(defmethod ,(intern (symbol-name method-name) (find-package "HOUSE")) (,parameter (type (eql ,type)))
+        ,@method-body))))
+
+(defmacro define-http-type ((type &key (priority 0)) &body body)
   (declare (ignore priority))
-  (with-gensyms (tp)
-    `(let ((,tp ,type))
-       ,@(when type-expression
-	   `((defmethod type-expression (parameter (type (eql ,type))) ,type-expression)))
-       ,@(when type-assertion
-	   `((defmethod type-assertion (parameter (type (eql ,type))) ,type-assertion))))))
+  `(progn
+     ,@(mapcar (make-http-type-expander type) body)))
 
 ;;;;; Common HTTP types
 (define-http-type (:string))
 
 (define-http-type (:integer)
-    :type-expression `(parse-integer ,parameter :junk-allowed t)
-    :type-assertion `(numberp ,parameter))
+  (:type-expression (parameter) (parse-integer parameter :junk-allowed t))
+  (:type-assertion (parameter) (numberp parameter)))
+
+(define-http-type (:integer)
+  (:type-expression (parameter) (parse-integer parameter :junk-allowed t))
+  (:type-assertion (parameter) (numberp parameter)))
 
 (define-http-type (:json)
-    :type-expression `(json:decode-json-from-string ,parameter))
+  (:type-expression (parameter) (json:decode-json-from-string parameter)))
 
 (define-http-type (:keyword)
-    :type-expression `(->keyword ,parameter))
+  (:type-expression (parameter) (->keyword parameter)))
 
 (define-http-type (:list-of-keyword)
-    :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
-			 if (stringp elem) collect (->keyword elem)
-			 else do (error (make-instance 'http-assertion-error :assertion `(stringp ,elem)))))
+  (:type-expression (parameter) (loop for elem in (json:decode-json-from-string parameter)
+                                      if (stringp elem) collect (->keyword elem)
+                                        else do (error (make-instance 'http-assertion-error :assertion `(stringp ,elem))))))
 
 (define-http-type (:list-of-integer)
-    :type-expression `(json:decode-json-from-string ,parameter)
-    :type-assertion `(every #'numberp ,parameter))
+  (:type-expression (parameter) (json:decode-json-from-string parameter))
+  (:type-assertion (parameter) (every #'numberp parameter)))
