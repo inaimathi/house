@@ -8,7 +8,7 @@
 
 (defun arguments (args body)
   (loop with res = body
-     for arg in args
+     for arg in (reverse args)
      do (match arg
 	  ((guard arg-sym (symbolp arg-sym))
 	   (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
@@ -77,7 +77,7 @@
 (defmacro define-handler ((name &key (close-socket? t) (content-type "text/html") (method :any)) (&rest args) &body body)
   (let* ((processed (process-uri name))
 	 (path-vars (loop for v in processed when (path-var? v) collect (parse-var v)))
-	 (full-params (append args path-vars)))
+	 (full-params (append path-vars args)))
     (check-for-dupes full-params)
     `(insert-handler!
       (list ,@(cons method processed))
