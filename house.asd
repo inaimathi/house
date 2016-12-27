@@ -18,6 +18,7 @@
 	       (:file "model")
 	       (:file "handler-table")
 	       (:file "util")
+	       (:file "http-types")
 	       (:file "define-handler")
 	       (:file "session")
 	       (:file "house")
