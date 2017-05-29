@@ -84,7 +84,10 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     `(lambda (sock ,cookie? session request)
        (declare (ignorable session request))
        ,(arguments args
-		   `(let* ((result (progn ,@body))
+		   `(let* ((headers (list (cons "Access-Control-Allow-Origin" "*")
+					  (cons "Cache-Control" "no-cache, no-store, must-revalidate")
+					  (cons "Access-Control-Allow-Headers" "Content-Type")))
+			   (result (progn ,@body))
 			   (response
 			    (if (typep result 'response)
 				result
@@ -93,6 +96,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 				 :content-type ,content-type
 				 :cookie (unless ,cookie? (token session))
 				 :body result))))
+		      (setf (headers response) headers)
 		      (write! response (flex-stream sock))
 		      (socket-close sock))))))
 
@@ -101,12 +105,16 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     `(lambda (sock ,cookie? session request)
        (declare (ignorable session request))
        ,(arguments args
-		   `(let ((res (progn ,@body))
+		   `(let ((headers (list (cons "Access-Control-Allow-Origin" "*")
+					 (cons "Cache-Control" "no-cache, no-store, must-revalidate")
+					 (cons "Access-Control-Allow-Headers" "Content-Type")))
+			  (res (progn ,@body))
 			  (stream (flex-stream sock)))
 		      (write!
 		       (make-instance
 			'response
 			:keep-alive? t :content-type "text/event-stream"
+			:headers headers
 			:cookie (unless ,cookie? (token session)))
 		       stream)
 		      (crlf stream)
@@ -142,7 +150,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 	   `(make-closing-handler (:content-type ,content-type) ,full-params ,@body)
 	   `(make-stream-handler ,full-params ,@body)))))
 
-(defmacro define-json-handler ((name) (&rest args) &body body)
+(defmacro define-json-handler ((name &key (method :any)) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
      (json:encode-json-to-string (progn ,@body))))
 

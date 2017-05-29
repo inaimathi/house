@@ -145,8 +145,11 @@
 (defmethod write! ((res response) (stream stream))
   (write-ln stream "HTTP/1.1 " (response-code res))
   (write-ln stream "Content-Type: " (content-type res) "; charset=" (charset res))
-  (write-ln stream "Cache-Control: no-cache, no-store, must-revalidate")
-  (write-ln stream "Access-Control-Allow-Origin: *")
+  (loop for (name . value) in (headers res)
+     when (not (member
+		name '("Content-Type" "Set-Cookie" "Location" "Connection" "Expires" "Content-Length")
+		:test-not #'string/=))
+     do (write-ln stream name ": " value))
   (awhen (cookie res)
     (if (null *cookie-domains*)
 	(write-ln stream "Set-Cookie: name=" it)

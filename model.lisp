@@ -34,6 +34,7 @@
 
 (defclass response ()
   ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
+   (headers :accessor headers :initarg :headers :initform nil)
    (charset :accessor charset :initform "utf-8")
    (response-code :accessor response-code :initform "200 OK" :initarg :response-code)
    (cookie :accessor cookie :initform nil :initarg :cookie)
