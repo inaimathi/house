@@ -33,6 +33,8 @@
 	       (dbg "Publishing to channel" chan msg))
     nil))
 
+(defmethod ->keyword ((thing null)) nil)
+
 (defmethod ->keyword ((thing symbol))
   (intern (symbol-name thing) :keyword))
 

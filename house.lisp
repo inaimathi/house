@@ -84,11 +84,14 @@
     (error () :eof)))
 
 ;;;;; Parse-related
-(defmethod parse-params ((params null)) nil)
-(defmethod parse-params ((params string))
+(defmethod parse-params (content-type (params null)) nil)
+(defmethod parse-params (content-type (params string))
   (loop for pair in (split "&" params)
      for (name val) = (split "=" pair)
      collect (cons (->keyword name) (or val ""))))
+
+(defmethod parse-params ((content-type (eql :application/json)) (params string))
+  (cl-json:decode-json-from-string params))
 
 (defmethod parse-cookies ((cookie string))
   (loop for c in (split "; " cookie) for s = (split "=" c)
@@ -110,13 +113,15 @@
 	   if (eq n :cookie) do (setf (session-tokens req) (parse-cookies value))
 	   else if (eq n :content-length) do (setf expecting (parse-integer value))
 	   else do (push (cons n value) (headers req)))
-	(setf (parameters req) (parse-params parameters))
+	(setf (parameters req) (parse-params nil parameters))
 	(values req expecting)))))
 
 (defmethod parse ((buf buffer))
   (let ((str (coerce (reverse (contents buf)) 'string)))
     (if (request buf)
-	(parse-params str)
+	(parse-params
+	 (->keyword (cdr (assoc :content-type (headers (request buf)))))
+	 str)
 	(parse str))))
 
 ;;;;; Handling requests
