@@ -10,6 +10,7 @@
 
 	       #:bordeaux-threads #:usocket #:flexi-streams
 	       #:cl-fad #:cl-ppcre #:optima #:cl-json #:split-sequence
+               #:quri
 
 	       #:session-token #:trivial-features
 
