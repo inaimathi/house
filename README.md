@@ -1,7 +1,7 @@
 # :house
 ##### Minimal, asynchronous, native Common Lisp web server
 
-[![Build Status](https://travis-ci.org/inaimathi/house.svg?branch=master)](https://travis-ci.org/inaimathi/house)
+[![Build Status](https://travis-ci.org/inaimathi/house.svg?branch=major-overhaul)](https://travis-ci.org/inaimathi/house)
 
 The goals of `:house` are to be
 
