@@ -1,17 +1,28 @@
 # :house
-##### Minimal asynchronous Common Lisp web server
+##### Minimal, asynchronous, native Common Lisp web server
 
-`:house` started out as part of [the `:deal` project](https://github.com/Inaimathi/deal) ("deal"? "house"? get it?). I hacked it out in an attempt to generalize it and use it other projects with similar objectives. It's intentionally minimal, single-threaded and stresses readability over efficiency both in its internals and in the interfacing code it requires.
+The goals of `:house` are to be
+
+1. Asynchronous
+2. Minimal, but complete for the purposes of web application development
+3. Fully native
+
+Performance is _not_ on this list. This is the server/client framework you run if you never want to see an `ffi-binding` error on any platform where you're able to run `sbcl`. If you need high-throughput, take a look at [`woo`](https://github.com/fukamachi/woo. If you need a thread-per-request model, look into [`hunchentoot`](http://edicl.github.io/hunchentoot/). If you need a file server, go set up [`nginx`](https://www.nginx.com/).
 
 ### News
 
-- `:house` is now in `quicklisp`
-- There is now a `*cookie-domains*` variable that expects a list of strings representing domains where cookies should be valid. It defaults to `nil`. If left unset, `house` will do the default thing and set one cookie for the default domain. If you set it to a list of strings, it will explicitly emit `domain=` tags for cookies, and send the cookie token for each specified domain. *(Shamelessly adding features for [congregate](https://github.com/inaimathi/cl-congregate) here :p)*
-- The default `write!` method now outputs CORS headers by default (and there is no way to turn it off at the moment)
-- Handlers now accept, and properly handle path parameters. For instance, `(define-handler (hello-world/-user=string :content-type "text/plain") (format nil "Hello there, ~a!" user))` will define a handler that accepts requests for `/hello-world/<some path component>`, runs the usual checks ensuring that it's a valid string, and binds its value to the symbol `user`. The body of that handler will do exactly what you think it should.
-- Handlers now accept, and properly handle HTTP methods as an additional keyword parameter. Additionally, this can be set to :any (in which case the defined handler will handle any HTTP method). For instance `(define-handler (hello-world :method :get) ...)` will create a handler that will only respond to GET requests, and nots POSTs, DELETEs or others.
-- Handlers no longer expose the symbol `parameters`. Instead, they expose the symbol `request` (you can call `(parameters request)` to get the old `parameters` value). This is in the interest of supporting dispatch based on the `:host` header, but can also allow some other tricks.
-- Added `redirect!` primitive so that normal handlers can conditionally redirect to other pages
+House is undergoing a major overhaul. The goals are
+
+1. Clean up a bunch of the request/parameter internals
+2. Clean up the external interface, including handler definition and local server definitions
+3. Get a much stricter test suite running
+4. Add a similarly asynchronous Lisp-native web client
+
+### TODO
+
+- Remove the requirement for `bordeaux-threads` (only required in testing, and I think defining a server intelligently takes away the need for that)
+- Simplify the "type" system for parameters (possibly allow passing a validation/parsing function)
+- Add a client (this is going to need to be broken into a lot of steps, and may end up being a separate branch after we ge the above sorted out)
 
 ### Installation
 
