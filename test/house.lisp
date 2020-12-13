@@ -1,4 +1,4 @@
-(in-package #:house-test)
+(in-package #:house/test)
 
 (tests
 

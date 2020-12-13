@@ -25,7 +25,7 @@
 		 (:file "session")
 		 (:file "house")))))
 
-(asdf:defsystem #:house-test
+(asdf:defsystem #:house/test
   :description "Test suite for :house"
   :author "Inaimathi <leo.zovic@gmail.com>"
   :license "AGPL3"
