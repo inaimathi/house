@@ -24,6 +24,7 @@
 		 (:file "util")
 		 (:file "define-handler")
 		 (:file "session")
+		 (:file "channel")
 		 (:file "house")))))
 
 (asdf:defsystem #:house/test
