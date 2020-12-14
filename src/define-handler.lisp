@@ -2,11 +2,6 @@
 
 ;;;;;;;;;; Parameter type parsing.
 ;;;;; Basics
-(defparameter *http-type-priority* (make-hash-table)
-  "Priority table for all parameter types.
-Types will be parsed from highest to lowest priority;
-parameters with a lower priority can refer to parameters of a higher priority.")
-
 (defgeneric type-expression (parameter type)
   (:documentation
    "A type-expression will tell the server how to convert a parameter from a string to a particular, necessary type."))
@@ -17,11 +12,9 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 (defmethod type-assertion (parameter type) nil)
 
 ;;;;; Definition macro
-(defmacro define-http-type ((type &key (priority 0)) &key type-expression type-assertion)
-  (assert (numberp priority) nil "`priority` should be a number. The highest will be converted first")
+(defmacro define-http-type ((type) &key type-expression type-assertion)
   (with-gensyms (tp)
     `(let ((,tp ,type))
-       (setf (gethash ,tp *http-type-priority*) ,priority)
        ,@(when type-expression
 	   `((defmethod type-expression (parameter (type (eql ,type))) ,type-expression)))
        ,@(when type-assertion
@@ -50,33 +43,24 @@ parameters with a lower priority can refer to parameters of a higher priority.")
     :type-assertion `(every #'numberp ,parameter))
 
 ;;;;;;;;;; Constructing argument lookups
-(defun args-by-type-priority (args &optional (priority-table *http-type-priority*))
-  (let ((cpy (copy-list args)))
-    (sort cpy #'<=
-	  :key (lambda (arg)
-		 (if (listp arg)
-		     (gethash (second arg) priority-table 0)
-		     0)))))
-
 (defun arg-exp (arg-sym)
   `(aif (cdr (assoc ,(->keyword arg-sym) (parameters request)))
 	(quri:url-decode (or it ""))
 	(error (make-instance 'http-assertion-error :assertion ',arg-sym))))
 
 (defun arguments (args body)
-  (loop with res = body
-     for arg in (args-by-type-priority args)
-     do (match arg
-	  ((guard arg-sym (symbolp arg-sym))
-	   (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
-			,res)))
-	  ((list* arg-sym type restrictions)
-	   (setf res
-		 `(let ((,arg-sym ,(or (type-expression (arg-exp arg-sym) type) (arg-exp arg-sym))))
-		    ,@(awhen (type-assertion arg-sym type) `((assert-http ,it)))
-		    ,@(loop for r in restrictions collect `(assert-http ,r))
-		    ,res))))
-     finally (return res)))
+  (loop with res = body for arg in args
+	do (match arg
+	     ((guard arg-sym (symbolp arg-sym))
+	      (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
+			   ,res)))
+	     ((list* arg-sym type restrictions)
+	      (setf res
+		    `(let ((,arg-sym ,(or (type-expression (arg-exp arg-sym) type) (arg-exp arg-sym))))
+		       ,@(awhen (type-assertion arg-sym type) `((assert-http ,it)))
+		       ,@(loop for r in restrictions collect `(assert-http ,r))
+		       ,res))))
+	finally (return res)))
 
 ;;;;;;;;;; Defining Handlers
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
