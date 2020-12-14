@@ -80,4 +80,5 @@
 
 (defmacro with-handler-table (tbl &body body)
   `(let ((*handler-table* ,tbl))
-     ,@body))
+     ,@body
+     *handler-table*))
