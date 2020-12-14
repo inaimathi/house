@@ -15,13 +15,6 @@
 	       (dbg "Handling request..." sock req (resource req) (headers req) (session-tokens req) (parameters req)))
     (defmethod handle-request :after (sock req)
 	       (dbg "Completed request..."))
-    (defmethod buffer! :before (buf)
-	       (dbg "Buffering..." buf (tries buf)))
-    (defmethod buffer! :after (buf)
-	       (dbg "Buffered..."
-		    (coerce (reverse (contents buf)) 'string))
-	       (when (> (tries buf) +max-buffer-tries+)
-		 (dbg "Needy buffer..." buf (tries buf) (coerce (reverse (contents buf)) 'string))))
     (defmethod write! :before ((res response) sock)
 	       (dbg "Writing response..."))
     (defmethod error! :before (res sock &optional instance)

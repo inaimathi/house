@@ -62,7 +62,7 @@
    #+windows'(#\newline #\newline)
    lst))
 
-(defmethod buffer! ((buffer buffer))
+(defun buffer! (buffer)
   (handler-case
       (let ((stream (bi-stream buffer)))
 	(incf (tries buffer))
