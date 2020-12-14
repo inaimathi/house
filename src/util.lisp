@@ -59,24 +59,6 @@
 (defun flex-stream (sock)
   (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8))
 
-(defmethod uri-decode ((thing null)) nil)
-
-(defmethod uri-decode ((string string))
-  (coerce
-   (loop with len = (length string) and i = 0
-      until (>= i len)
-      for char = (aref string i) for inc-by = 1
-      collect  (cond ((eql #\+ char)
-		      #\space)
-		     ((eql #\% char)
-		      (setf inc-by 3)
-		      ;;; TODO error trap here
-		      (code-char (parse-integer (subseq string (+ i 1) (+ i 3)) :radix 16)))
-		     (t
-		      char))
-      do (incf i inc-by))
-   'string))
-
 (defmethod path->uri ((path pathname) &key stem-from)
   (format nil "/~{~a/~}~a~@[.~a~]"
 	  (if stem-from

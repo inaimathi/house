@@ -60,7 +60,7 @@ parameters with a lower priority can refer to parameters of a higher priority.")
 
 (defun arg-exp (arg-sym)
   `(aif (cdr (assoc ,(->keyword arg-sym) (parameters request)))
-	(uri-decode it)
+	(quri:url-decode (or it ""))
 	(error (make-instance 'http-assertion-error :assertion ',arg-sym))))
 
 (defun arguments (args body)

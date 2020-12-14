@@ -12,14 +12,6 @@
       (parse-params :multipart "longer=parameter%20names&look=something%20like%20this")))
 
  (subtest
-  "uri-decode"
-  (is "test test" (uri-decode "test test"))
-  (is "test test" (uri-decode "test+test")) ;; we expect encodeURIComponent on the content
-  (is "test test" (uri-decode "test%20test"))
-  (is ",./<>?:\";'[]{}~!@#$%^&*()_+-=` "
-      (uri-decode "%2C.%2F%3C%3E%3F%3A%22%3B'%5B%5D%7B%7D~!%40%23%24%25%5E%26*()_%2B-%3D%60%20")))
-
- (subtest
   "Request parsing"
   (subtest
    "Older HTTP versions"

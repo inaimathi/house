@@ -2,4 +2,4 @@
 
 (defpackage #:house/test
   (:use #:cl #:house #:test-utils)
-  (:import-from #:house #:parse #:parse-params #:uri-decode #:http-assertion-error))
+  (:import-from #:house #:parse #:parse-params #:http-assertion-error))
