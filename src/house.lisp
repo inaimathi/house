@@ -52,12 +52,6 @@
 		   #+CCL(error (e)
 			  (error! +500+ ready e)))))))))
 
-(defun line-terminated? (lst)
-  (starts-with-subseq
-   #-windows'(#\linefeed #\return #\linefeed #\return)
-   #+windows'(#\newline #\newline)
-   lst))
-
 (defun buffer! (buffer)
   (handler-case
       (let ((stream (bi-stream buffer)))

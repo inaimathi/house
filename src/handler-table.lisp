@@ -13,11 +13,16 @@
 (defun path-var? (str)
   (and (stringp str)
        (> (length str) 0)
-       (eql #\- (char str 0))))
+       (eql #\< (char str 0))))
 
 (defun var-key (str)
-  (let ((pair (split-at #\= (string-upcase (subseq str 1)))))
-    (intern (car pair) :keyword)))
+  (when (path-var? str)
+    (let ((pair (split-at #\= (string-upcase str))))
+      (intern (string-trim "<>" (car pair)) :keyword))))
+
+(defun var-annotation (str)
+  (let ((pair (split-at #\= (string-upcase str))))
+    (when (cdr pair) (read-from-string (cadr pair)))))
 
 (defun trie-insert! (key value trie)
   (labels ((rec (key-parts trie)
@@ -64,9 +69,6 @@
 (defun empty () (make-instance 'handler-table))
 
 (defparameter *handler-table* (empty))
-
-(defmethod process-uri ((uri string)) (split-at #\/ (string-upcase uri)))
-(defmethod process-uri ((uri symbol)) (process-uri (symbol-name uri)))
 
 (defun insert-handler! (uri handler-fn &key (handler-table *handler-table*))
   (trie-insert! uri handler-fn (handlers handler-table))
