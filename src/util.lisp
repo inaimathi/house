@@ -3,6 +3,12 @@
 (defun split-at (elem seq)
   (split-sequence:split-sequence elem seq :remove-empty-subseqs t))
 
+(defun line-terminated? (lst)
+  (starts-with-subseq
+   #-windows'(#\linefeed #\return #\linefeed #\return)
+   #+windows'(#\newline #\newline)
+   lst))
+
 (defun debug! (&optional (stream *standard-output*))
   (flet ((dbg (label &rest msg) (format stream ">>>> ~a~%~{~s~%----------~%~}~%" label msg)))
     (defmethod process-ready :after ((sock stream-server-usocket) conns)

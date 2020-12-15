@@ -10,7 +10,7 @@
    :define-redirect-handler :redirect!
    :define-file-handler
 
-   :define-http-type :parameter :restrictions
+   :>>string :>>integer :>>keyword :>>json :>>list
 
    :request :resource :headers :session-tokens :parameters
 
