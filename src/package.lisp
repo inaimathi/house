@@ -4,11 +4,8 @@
   (:import-from #:flexi-streams :octet)
   (:import-from #:anaphora :aif :awhen :aand :it)
   (:export
-   :define-handler
-   :define-json-handler
-
-   :define-redirect-handler :redirect!
-   :define-file-handler
+   :define-handler :define-json-handler :define-file-handler
+   :redirect!
 
    :>>string :>>integer :>>keyword :>>json :>>list
 
@@ -16,8 +13,11 @@
 
    :assert-http
    :root :sock :session :parameters
-   :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup :path->uri
+
+   :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup
+
    :subscribe! :publish! :make-sse
+
    :start))
 
 (in-package :house)
