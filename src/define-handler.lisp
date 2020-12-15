@@ -1,88 +1,88 @@
 (in-package #:house)
 
 ;;;;;;;;;; Parameter type parsing.
-;;;;; Basics
-(defgeneric type-expression (parameter type)
-  (:documentation
-   "A type-expression will tell the server how to convert a parameter from a string to a particular, necessary type."))
-(defgeneric type-assertion (parameter type)
-  (:documentation
-   "A lookup assertion is run on a parameter immediately after conversion. Use it to restrict the space of a particular parameter."))
-(defmethod type-expression (parameter type) nil)
-(defmethod type-assertion (parameter type) nil)
+(defun process-uri (uri)
+  (etypecase uri
+    (string (split-at #\/ (string-upcase uri)))
+    (symbol (split-at #\/ (symbol-name uri)))))
 
-;;;;; Definition macro
-(defmacro define-http-type ((type) &key type-expression type-assertion)
-  (with-gensyms (tp)
-    `(let ((,tp ,type))
-       ,@(when type-expression
-	   `((defmethod type-expression (parameter (type (eql ,type))) ,type-expression)))
-       ,@(when type-assertion
-	   `((defmethod type-assertion (parameter (type (eql ,type))) ,type-assertion))))))
+(defun get-param (request arg annotation)
+  (aif (cdr (assoc arg (parameters request)))
+       (handler-case
+	   (funcall annotation (quri:url-decode it))
+	 (error (c)
+	   (declare (ignore c))
+	   (error (make-instance 'http-assertion-error :assertion arg))))
+       (error (make-instance 'http-assertion-error :assertion arg))))
+
+(defun dedupe-params (full-params)
+  (let ((dupes (make-hash-table))
+	(params (make-hash-table)))
+    (loop for (p annotation) in full-params
+	  do (cond
+	       ((and annotation
+		     (gethash p params)
+		     (not (eql annotation (gethash p params))))
+		(incf (gethash p dupes 0)))
+	       ((not (gethash p params))
+		(setf (gethash p params) annotation))))
+    (assert (every (lambda (n) (= n 0))
+		   (alexandria:hash-table-values dupes))
+	    nil "Found dupe in parameters: ~s"
+	    (loop for k being the hash-keys of dupes
+		  for v being the hash-values of dupes
+		  when (/= v 0) collect k))
+    (loop for p being the hash-keys of params
+	  for ann being the hash-values of params
+	  collect (list p ann))))
 
 ;;;;; Common HTTP types
-(define-http-type (:string))
+(defun >>string (arg) arg)
 
-(define-http-type (:integer)
-    :type-expression `(parse-integer ,parameter :junk-allowed t)
-    :type-assertion `(numberp ,parameter))
+(defun >>integer (arg)
+  (etypecase arg
+    (integer arg)
+    (number (round arg))
+    (string (let ((parsed (parse-integer arg :junk-allowed t)))
+	      (assert (numberp parsed))
+	      parsed))))
 
-(define-http-type (:json)
-    :type-expression `(json:decode-json-from-string ,parameter))
+(defun >>json (arg)
+  (json:decode-json-from-string arg))
 
-(define-http-type (:keyword)
-    :type-expression `(->keyword ,parameter))
+(defun >>keyword (arg)
+  (etypecase arg
+    (keyword arg)
+    (symbol (intern (symbol-name arg) :keyword))
+    (string (intern (string-upcase arg) :keyword))))
 
-(define-http-type (:list-of-keyword)
-    :type-expression `(loop for elem in (json:decode-json-from-string ,parameter)
-			 if (stringp elem) collect (->keyword elem)
-			 else do (error (make-instance 'http-assertion-error :assertion `(stringp ,elem)))))
-
-(define-http-type (:list-of-integer)
-    :type-expression `(json:decode-json-from-string ,parameter)
-    :type-assertion `(every #'numberp ,parameter))
-
-;;;;;;;;;; Constructing argument lookups
-(defun arg-exp (arg-sym)
-  `(aif (cdr (assoc ,(->keyword arg-sym) (parameters request)))
-	(quri:url-decode (or it ""))
-	(error (make-instance 'http-assertion-error :assertion ',arg-sym))))
-
-(defun arguments (args body)
-  (loop with res = body for arg in args
-	do (match arg
-	     ((guard arg-sym (symbolp arg-sym))
-	      (setf res `(let ((,arg-sym ,(arg-exp arg-sym)))
-			   ,res)))
-	     ((list* arg-sym type restrictions)
-	      (setf res
-		    `(let ((,arg-sym ,(or (type-expression (arg-exp arg-sym) type) (arg-exp arg-sym))))
-		       ,@(awhen (type-assertion arg-sym type) `((assert-http ,it)))
-		       ,@(loop for r in restrictions collect `(assert-http ,r))
-		       ,res))))
-	finally (return res)))
+(defun >>list (elem-type)
+  (lambda (arg)
+    (loop for elem in (json:decode-json-from-string arg)
+	  collect (funcall elem-type elem))))
 
 ;;;;;;;;;; Defining Handlers
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session request)
        (declare (ignorable session request))
-       ,(arguments args
-		   `(let* ((headers (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
-					  (cons "Access-Control-Allow-Origin" "*")
-					  (cons "Access-Control-Allow-Headers" "Content-Type")))
-			   (result (progn ,@body))
-			   (response
-			    (if (typep result 'response)
-				result
-				(make-instance
-				 'response
-				 :content-type ,content-type
-				 :cookie (unless ,cookie? (token session))
-				 :body result))))
-		      (setf (headers response) headers)
-		      (write! response (flex-stream sock))
-		      (socket-close sock))))))
+       (let* (,@(loop for a in args
+		      collect `(,(car a) (get-arg request ,(car a) ,(cadr a))))
+	      (headers (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
+			     (cons "Access-Control-Allow-Origin" "*")
+			     (cons "Access-Control-Allow-Headers" "Content-Type")))
+	      (result (progn ,@body))
+	      (response
+		(if (typep result 'response)
+		    result
+		    (make-instance
+		     'response
+		     :content-type ,content-type
+		     :cookie (unless ,cookie? (token session))
+		     :body result))))
+	 (setf (headers response) headers)
+	 (write! response (flex-stream sock))
+	 (socket-close sock)))))
 
 (defmacro make-stream-handler ((&rest args) &body body)
   (with-gensyms (cookie?)
@@ -107,27 +107,11 @@
 		       stream)
 		      (force-output stream))))))
 
-(defun parse-var (str)
-  (let ((pair (split-at #\= (string-upcase (subseq str 1)))))
-    (if (second pair)
-	(list (intern (first pair)) (intern (second pair) :keyword))
-	(intern (first pair)))))
-
-(defun check-for-dupes (full-params)
-  (let ((dupes (make-hash-table)))
-    (loop for arg in full-params
-       for a = (if (consp arg) (car arg) arg)
-       do (incf (gethash a dupes 0)))
-    (assert (every (lambda (n) (= n 1)) (alexandria:hash-table-values dupes))
-	    nil "Found dupe in parameters: ~s"
-	    (loop for k being the hash-keys of dupes for v being the hash-values of dupes
-	       when (/= v 1) collect k))))
-
 (defmacro define-handler ((name &key (close-socket? t) (content-type "text/html") (method :any)) (&rest args) &body body)
   (let* ((processed (process-uri name))
-	 (path-vars (loop for v in processed when (path-var? v) collect (parse-var v)))
-	 (full-params (append args path-vars)))
-    (check-for-dupes full-params)
+	 (path-vars (loop for v in processed when (path-var? v)
+			  collect (list (intern (symbol-name (var-key v))) (var-annotation v))))
+	 (full-params (dedupe-params (append args path-vars))))
     `(insert-handler!
       (list ,@(cons method processed))
       ,(if close-socket?

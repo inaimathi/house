@@ -37,6 +37,8 @@
   :components ((:module
                 test :components
                 ((:file "package")
+		 (:test-file "handler-table")
+		 (:test-file "define-handler")
                  (:test-file "house"))))
   :perform (test-op
 	    :after (op c)
