@@ -157,14 +157,3 @@
    'response
    :response-code (if permanent? "301 Moved Permanently" "307 Temporary Redirect")
    :location target :content-type "text/plain" :body "Resource moved..."))
-
-(defmacro define-redirect-handler ((name &key permanent? (method :any)) target)
-  (with-gensyms (cookie?)
-    `(insert-handler!
-      (list ,@(cons method (process-uri name)))
-      (lambda (sock ,cookie? session request)
-	(declare (ignorable sock ,cookie? session request))
-	(write!
-	 (redirect! ,target :permanent? ,permanent?)
-	 (flex-stream sock))
-	(socket-close sock)))))
