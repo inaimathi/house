@@ -32,13 +32,12 @@
 	       (dbg "Publishing to channel" chan msg))
     nil))
 
-(defmethod ->keyword ((thing null)) nil)
-
-(defmethod ->keyword ((thing symbol))
-  (intern (symbol-name thing) :keyword))
-
-(defmethod ->keyword ((thing string))
-  (intern (string-upcase thing) :keyword))
+(defun ->keyword (thing)
+  (etypecase thing
+    (null nil)
+    (keyword thing)
+    (symbol (intern (symbol-name thing) :keyword))
+    (string (intern (string-upcase thing) :keyword))))
 
 (defmethod lookup (key (hash hash-table))
   (gethash key hash))
