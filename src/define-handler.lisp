@@ -64,7 +64,10 @@
 ;;;;;;;;;; Defining Handlers
 (defun -param-bindings (params)
   (loop for p in params
-	collect `(,(car p) (get-param request ,(car p) ,(cadr p)))))
+	collect (let ((f (if (symbolp (cadr p))
+			     `(fdefinition ',(cadr p))
+			     (cadr p))))
+		  `(,(car p) (get-param request ,(->keyword (car p)) ,f)))))
 
 (defmacro closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   `(lambda (request)

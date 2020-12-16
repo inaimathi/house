@@ -135,9 +135,9 @@
 		(progn
 		  (force-output stream)
 		  (write!
-		   (make-instance 'sse :data (or res "Listening..."))
-		   stream))
-		(force-output stream))))
+		   (make-instance 'sse :data "Listening...")
+		   stream)
+		  (force-output stream)))))
 	(error! +404+ sock))))
 
 (defun crlf (&optional (stream *standard-output*))
