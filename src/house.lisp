@@ -124,7 +124,20 @@
 			       for s = (get-session! tok)
 			       when s do (return s))))
 	       (sess (or check? (new-session!))))
-	  (funcall handler sock check? sess req))
+	  (setf (session req) sess)
+	  (let ((resp (funcall (fn handler) req))
+		(stream (flex-stream sock)))
+	    (setf (cookie resp) (unless check? (token sess)))
+	    (write! resp stream)
+	    (crlf stream)
+	    (if (closing? handler)
+		(socket-close sock)
+		(progn
+		  (force-output stream)
+		  (write!
+		   (make-instance 'sse :data (or res "Listening..."))
+		   stream))
+		(force-output stream))))
 	(error! +404+ sock))))
 
 (defun crlf (&optional (stream *standard-output*))
