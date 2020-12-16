@@ -135,32 +135,32 @@
      (json:encode-json-to-string (progn ,@body))))
 
 ;;;;; Special case handlers
-;; (defun define-file-handler (path &key stem-from (method :any))
-;;   (warn "define-file-handler is not intended for production use")
-;;   (let ((path (if (stringp path) (pathname path) path)))
-;;     (cond ((cl-fad:directory-exists-p path)
-;; 	   (cl-fad:walk-directory
-;; 	    path
-;; 	    (lambda (fname)
-;; 	      (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
-;; 	  ((cl-fad:file-exists-p path)
-;; 	   (insert-handler!
-;; 	    (cons method (process-uri (path->uri path :stem-from stem-from)))
-;; 	    (let ((mime (path->mimetype path)))
-;; 	      (lambda (socket cookie? session request)
-;; 		(declare (ignore cookie? session request))
-;; 		(if (cl-fad:file-exists-p path)
-;; 		    (with-open-file (s path :direction :input :element-type 'octet)
-;; 		      (let ((buf (make-array (file-length s) :element-type 'octet)))
-;; 			(read-sequence buf s)
-;; 			(write!
-;; 			 (make-instance 'response :content-type mime :body buf)
-;; 			 (flex-stream socket)))
-;; 		      (socket-close socket))
-;; 		    (error! +404+ socket))))))
-;; 	  (t
-;; 	   (warn "Tried serving nonexistent file '~a'" path))))
-;;   nil)
+(defun define-file-handler (path &key stem-from (method :any))
+  (warn "define-file-handler is not intended for production use")
+  (let ((path (if (stringp path) (pathname path) path)))
+    (cond ((cl-fad:directory-exists-p path)
+	   (cl-fad:walk-directory
+	    path
+	    (lambda (fname)
+	      (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
+	  ((cl-fad:file-exists-p path)
+	   (insert-handler!
+	    (cons method (process-uri (path->uri path :stem-from stem-from)))
+	    (make-instance
+	     'handler-entry
+	     :fn (let ((mime (path->mimetype path)))
+		   (lambda (request)
+		     (declare (ignore request))
+		     (if (cl-fad:file-exists-p path)
+			 (with-open-file (s path :direction :input :element-type 'octet)
+			   (let ((buf (make-array (file-length s) :element-type 'octet)))
+			     (read-sequence buf s)
+			     (make-instance 'response :content-type mime :body buf)))
+			 +404+)))
+	     :closing? t)))
+	  (t
+	   (warn "Tried serving nonexistent file '~a'" path))))
+  nil)
 
 (defun redirect! (target &key permanent?)
   (make-instance
