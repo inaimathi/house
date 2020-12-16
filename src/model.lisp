@@ -10,6 +10,10 @@
   `(unless ,assertion
      (error (make-instance 'http-assertion-error :assertion ',assertion))))
 
+(defclass handler-entry ()
+  ((fn :reader fn :initarg :fn :initform nil)
+   (closing? :reader closing? :initarg :closing? :initform t)))
+
 (defclass buffer ()
   ((tries :accessor tries :initform 0)
    (contents :accessor contents :initform nil)
@@ -30,7 +34,8 @@
    (resource :accessor resource :initarg :resource)
    (headers :accessor headers :initarg :headers :initform nil)
    (session-tokens :accessor session-tokens :initarg :session-tokens :initform nil)
-   (parameters :accessor parameters :initarg :parameters :initform nil)))
+   (parameters :accessor parameters :initarg :parameters :initform nil)
+   (session :accessor session :initarg :session :initform nil)))
 
 (defclass response ()
   ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
