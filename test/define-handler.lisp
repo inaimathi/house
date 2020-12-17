@@ -35,4 +35,34 @@
   (is (dedupe-params '((A >>KEYWORD) (A >>KEYWORD)))
       '((A >>KEYWORD)))
   (is (dedupe-params '((A >>KEYWORD) (A)))
-      '((A >>KEYWORD)))))
+      '((A >>KEYWORD))))
+
+ (subtest
+  "-param-bindings"
+  ;; TODO - expands symbol annotations to fdefinition calls
+  ;; TODO - leaves list annotations as-is
+  )
+
+ (subtest
+  "closing-handler"
+  ;; TODO - if body returns a response (through redirect!), returin it
+  ;; TODO - if body returns a string, make a response out of it
+  ;; TODO - generated response has appropriate content-type
+  ;; TODO - generated response contains appropriate body
+  ;; TODO - the user can add `headers` from the body
+  ;; TODO - the user can remove `headers` from the body
+  )
+
+ (subtest
+  "stream-handler"
+  ;; TODO - content-type is always `text/event-stream`
+  ;; TODO - body is always empty
+  ;; TODO - user can modify headers as above
+  )
+
+ (subtest
+  "define-handler and define-channel"
+  ;; TODO - expand into handler-entry instances
+  ;; TODO - the closing? flag is set as appropriate
+  ;; TODO - they insert the handler at the expected place in the current table
+  ))

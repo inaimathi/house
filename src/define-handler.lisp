@@ -63,7 +63,7 @@
 
 ;;;;;;;;;; Defining Handlers
 (defun -param-bindings (params)
-  (loop for p in params
+  (loop for p in (dedupe-params params)
 	collect (let ((f (if (symbolp (cadr p))
 			     `(fdefinition ',(cadr p))
 			     (cadr p))))
@@ -106,7 +106,7 @@
 				   (var-annotation v)))))
     (values
      (cons method processed)
-     (dedupe-params (append args path-vars)))))
+     (append args path-vars))))
 
 (defmacro define-channel ((name &key (method :any)) (&rest args) &body body)
   (multiple-value-bind (path full-params)
