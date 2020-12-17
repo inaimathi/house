@@ -4,6 +4,8 @@
   (:import-from #:flexi-streams :octet)
   (:import-from #:anaphora :aif :awhen :aand :it)
   (:export
+   :with-handler-table :empty-handler-table :insert-handler! :find-handler
+
    :define-handler :define-json-handler :define-file-handler
    :redirect!
 

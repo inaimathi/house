@@ -1,11 +1,6 @@
 (in-package #:house)
 
 ;;;;;;;;;; Parameter type parsing.
-(defun process-uri (uri)
-  (etypecase uri
-    (string (split-at #\/ (string-upcase uri)))
-    (symbol (split-at #\/ (symbol-name uri)))))
-
 (defun get-param (request arg annotation)
   (aif (cdr (assoc arg (parameters request)))
        (handler-case
@@ -69,13 +64,15 @@
 			     (cadr p))))
 		  `(,(car p) (get-param request ,(->keyword (car p)) ,f)))))
 
-(defmacro closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
+(defmacro closing-handler ((&key (content-type "text/html") (headers nil)) (&rest args) &body body)
   `(lambda (request)
      (declare (ignorable request))
      (let* (,@(-param-bindings args)
-	    (headers (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
-			   (cons "Access-Control-Allow-Origin" "*")
-			   (cons "Access-Control-Allow-Headers" "Content-Type")))
+	    (headers (concatenate
+		      'list headers
+		      (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
+			    (cons "Access-Control-Allow-Origin" "*")
+			    (cons "Access-Control-Allow-Headers" "Content-Type"))))
 	    (result (progn ,@body)))
        (if (typep result 'response)
 	   result
@@ -85,50 +82,51 @@
 	    :headers headers
 	    :body result)))))
 
-(defmacro stream-handler ((&rest args) &body body)
+(defmacro stream-handler ((&key (headers nil)) (&rest args) &body body)
   `(lambda (request)
      (declare (ignorable request))
      (let* (,@(-param-bindings args)
-	    (headers (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
-			   (cons "Access-Control-Allow-Origin" "*")
-			   (cons "Access-Control-Allow-Headers" "Content-Type")))
+	    (headers
+	      (concatenate
+	       'list headers
+	       (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
+		     (cons "Access-Control-Allow-Origin" "*")
+		     (cons "Access-Control-Allow-Headers" "Content-Type"))))
 	    (res (progn ,@body)))
-       (make-instance
-	'response
-	:keep-alive? t :content-type "text/event-stream"
-	:headers headers))))
+       (cond
+	 ((typep result 'response) res)
+	 (res
+	  (make-instance
+	   'response
+	   :keep-alive? t :content-type "text/event-stream"
+	   :headers headers))
+	 (t +404+)))))
 
-(defun -processed-handler-definition (name method args)
+(defun -full-params (name args)
   (let* ((processed (process-uri name))
 	 (path-vars (loop for v in processed when (path-var? v)
 			  collect (list
 				   (intern (symbol-name (var-key v)))
 				   (var-annotation v)))))
-    (values
-     (cons method processed)
-     (append args path-vars))))
+    (append args path-vars)))
 
 (defmacro define-channel ((name &key (method :any)) (&rest args) &body body)
-  (multiple-value-bind (path full-params)
-      (-processed-handler-definition name method args)
-    `(insert-handler!
-      (list ,@path)
-      (make-instance
-       'handler-entry
-       :fn (stream-handler ,full-params ,@body)
-       :closing? nil))))
+  `(insert-handler!
+    ,method ,name
+    (make-instance
+     'handler-entry
+     :fn (stream-handler () ,(-full-params name args) ,@body)
+     :closing? nil)))
 
 (defmacro define-handler ((name &key (content-type "text/html") (method :any)) (&rest args) &body body)
-  (multiple-value-bind (path full-params)
-      (-processed-handler-definition name method args)
-    `(insert-handler!
-      (list ,@path)
-      (make-instance
-       'handler-entry
-       :fn (closing-handler
-	       (:content-type ,content-type)
-	       ,full-params ,@body)
-       :closing? t))))
+  `(insert-handler!
+    ,method ,name
+    (make-instance
+     'handler-entry
+     :fn (closing-handler
+	     (:content-type ,content-type)
+	     ,(-full-params name args) ,@body)
+     :closing? t)))
 
 (defmacro define-json-handler ((name &key (method :any)) (&rest args) &body body)
   `(define-handler (,name :content-type "application/json") ,args
@@ -145,7 +143,7 @@
 	      (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
 	  ((cl-fad:file-exists-p path)
 	   (insert-handler!
-	    (cons method (process-uri (path->uri path :stem-from stem-from)))
+	    method (path->uri path :stem-from stem-from)
 	    (make-instance
 	     'handler-entry
 	     :fn (let ((mime (path->mimetype path)))
