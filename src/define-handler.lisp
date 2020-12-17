@@ -82,7 +82,7 @@
 	    :headers headers
 	    :body result)))))
 
-(defmacro stream-handler ((&key (headers nil)) (&rest args) &body body)
+(defmacro stream-handler ((channel-name &key (headers nil)) (&rest args) &body body)
   `(lambda (request)
      (declare (ignorable request))
      (let* (,@(-param-bindings args)
@@ -96,6 +96,8 @@
        (cond
 	 ((typep result 'response) res)
 	 (res
+	  (aif (socket-of request)
+	       (subscribe! ,channel-name it))
 	  (make-instance
 	   'response
 	   :keep-alive? t :content-type "text/event-stream"
@@ -115,7 +117,7 @@
     ,method ,name
     (make-instance
      'handler-entry
-     :fn (stream-handler () ,(-full-params name args) ,@body)
+     :fn (stream-handler (,name) ,(-full-params name args) ,@body)
      :closing? nil)))
 
 (defmacro define-handler ((name &key (content-type "text/html") (method :any)) (&rest args) &body body)

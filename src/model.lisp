@@ -35,7 +35,8 @@
    (headers :accessor headers :initarg :headers :initform nil)
    (session-tokens :accessor session-tokens :initarg :session-tokens :initform nil)
    (parameters :accessor parameters :initarg :parameters :initform nil)
-   (session :accessor session :initarg :session :initform nil)))
+   (session :accessor session :initarg :session :initform nil)
+   (socket-of :accessor socket-of :initarg :socket-of :initform nil)))
 
 (defclass response ()
   ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
