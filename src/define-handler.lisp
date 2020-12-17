@@ -64,12 +64,12 @@
 			     (cadr p))))
 		  `(,(car p) (get-param request ,(->keyword (car p)) ,f)))))
 
-(defmacro closing-handler ((&key (content-type "text/html") (headers nil)) (&rest args) &body body)
+(defmacro closing-handler ((&key (content-type "text/html") headers) (&rest args) &body body)
   `(lambda (request)
      (declare (ignorable request))
      (let* (,@(-param-bindings args)
 	    (headers (concatenate
-		      'list headers
+		      'list ,headers
 		      (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
 			    (cons "Access-Control-Allow-Origin" "*")
 			    (cons "Access-Control-Allow-Headers" "Content-Type"))))
@@ -88,7 +88,7 @@
      (let* (,@(-param-bindings args)
 	    (headers
 	      (concatenate
-	       'list headers
+	       'list ,headers
 	       (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
 		     (cons "Access-Control-Allow-Origin" "*")
 		     (cons "Access-Control-Allow-Headers" "Content-Type"))))

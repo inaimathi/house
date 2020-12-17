@@ -54,13 +54,52 @@
 
  (subtest
   "closing-handler"
-  ;; TODO - if body returns a response (through redirect!), returin it
-  ;; TODO - if body returns a string, make a response out of it
-  ;; TODO - generated response has appropriate content-type
-  ;; TODO - generated response contains appropriate body
-  ;; TODO - the user can add `headers` from the body
-  ;; TODO - the user can remove `headers` from the body
-  )
+  (let ((res (funcall
+	      (closing-handler
+		  (:content-type "text/html") ((name >>keyword))
+		(format nil "Hello, ~a!" name))
+	      (make-instance
+	       'request :http-method :GET :resource "/foo"
+			:parameters '((:name . "inaimathi"))))))
+    (is "200 OK" (response-code res))
+    (is "Hello, INAIMATHI!" (body res))
+    (is "text/html" (content-type res)))
+
+  (let ((pr (redirect! "/foo" :permanent? t))
+	(perm (funcall
+	       (closing-handler
+		   (:content-type "text/html") ((name >>keyword))
+		 (redirect! "/foo" :permanent? t))
+	       (make-instance
+		'request :http-method :GET :resource "/foo"
+			 :parameters '((:name . "inaimathi")))))
+	(tm (redirect! "/foo"))
+	(temp (funcall
+	       (closing-handler
+		   (:content-type "text/html") ((name >>keyword))
+		 (redirect! "/foo"))
+	       (make-instance
+		'request :http-method :GET :resource "/foo"
+			 :parameters '((:name . "inaimathi"))))))
+    (is (body perm) (body pr))
+    (is (body temp) (body tm))
+    (is "text/plain" (content-type perm))
+    (is "text/plain" (content-type temp))
+    (is (response-code perm) (response-code pr))
+    (is (response-code temp) (response-code tm)))
+
+  (let ((res (funcall
+	      (closing-handler
+		  (:content-type "text/html") ((name >>keyword))
+		(push (cons "X-Saying-Hello" "True") headers)
+		(format nil "Hello, ~a!" name))
+	      (make-instance
+	       'request :http-method :GET :resource "/foo"
+			:parameters '((:name . "inaimathi"))))))
+    (is "200 OK" (response-code res))
+    (is '("X-Saying-Hello" . "True")
+	(assoc "X-Saying-Hello" (headers res) :test #'string=))
+    (is "Hello, INAIMATHI!" (body res))))
 
  (subtest
   "stream-handler"

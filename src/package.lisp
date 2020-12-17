@@ -6,6 +6,7 @@
   (:export
    :with-handler-table :empty-handler-table :insert-handler! :find-handler
 
+   :closing-handler :stream-handler
    :define-handler :define-json-handler :define-file-handler
    :redirect!
 
