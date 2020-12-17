@@ -103,10 +103,33 @@
 
  (subtest
   "stream-handler"
-  ;; TODO - content-type is always `text/event-stream`
-  ;; TODO - body is always empty
-  ;; TODO - user can modify headers as above
-  )
+  (let ((res (funcall
+	      (stream-handler (public-channel/name) ((name >>keyword))
+		t)
+	      (make-instance
+	       'request :http-method :GET :resource "/foo"
+			:parameters '((:name . "inaimathi"))
+			:socket-of :subscribed-sock))))
+    (is "text/event-stream" (content-type res)
+	"The default Content-Type is text/event-stream")
+    (is nil (body res)
+	"The default body is empty")
+    (is :subscribed-sock
+	(car (member :subscribed-sock
+		     (subscribers-of 'public-channel/name)))
+	"When the channel handler returns a non-nil value, subscribe the given socket to the current channel"))
+
+  (let ((res (funcall
+  	      (stream-handler (private-channel/name) ((name >>keyword))
+  		nil)
+  	      (make-instance
+  	       'request :http-method :GET :resource "/foo"
+  			:parameters '((:name . "inaimathi"))
+  			:socket-of :unsubscribed-sock))))
+    (is nil
+	(member :unsubscribed-sock
+		(subscribers-of 'private-channel/name))
+	"When the channel handler returns a NIL, the socket is not subscribed")))
 
  (subtest
   "define-handler and define-channel"

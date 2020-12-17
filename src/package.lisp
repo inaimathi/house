@@ -19,7 +19,7 @@
 
    :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup
 
-   :subscribe! :publish! :make-sse
+   :subscribers-of :subscribe! :publish! :make-sse
 
    :start))
 

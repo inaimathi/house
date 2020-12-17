@@ -92,12 +92,12 @@
 	       (list (cons "Cache-Control" "no-cache, no-store, must-revalidate")
 		     (cons "Access-Control-Allow-Origin" "*")
 		     (cons "Access-Control-Allow-Headers" "Content-Type"))))
-	    (res (progn ,@body)))
+	    (result (progn ,@body)))
        (cond
-	 ((typep result 'response) res)
-	 (res
+	 ((typep result 'response) result)
+	 (result
 	  (aif (socket-of request)
-	       (subscribe! ,channel-name it))
+	       (subscribe! ',channel-name it))
 	  (make-instance
 	   'response
 	   :keep-alive? t :content-type "text/event-stream"
