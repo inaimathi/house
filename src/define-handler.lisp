@@ -114,7 +114,7 @@
 
 (defmacro define-channel ((name &key (method :any)) (&rest args) &body body)
   `(insert-handler!
-    ,method ,name
+    ,method ',name
     (make-instance
      'handler-entry
      :fn (stream-handler (,name) ,(-full-params name args) ,@body)
@@ -122,7 +122,7 @@
 
 (defmacro define-handler ((name &key (content-type "text/html") (method :any)) (&rest args) &body body)
   `(insert-handler!
-    ,method ,name
+    ,method ',name
     (make-instance
      'handler-entry
      :fn (closing-handler

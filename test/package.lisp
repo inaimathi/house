@@ -9,4 +9,4 @@
    #:path-var? #:var-key #:var-annotation #:>>string
    #:get-param #:dedupe-params #:-param-bindings
 
-   #:response-code #:content-type #:body))
+   #:response-code #:content-type #:body #:closing?))

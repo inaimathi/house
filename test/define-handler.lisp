@@ -133,7 +133,36 @@
 
  (subtest
   "define-handler and define-channel"
-  ;; TODO - expand into handler-entry instances
-  ;; TODO - the closing? flag is set as appropriate
-  ;; TODO - they insert the handler at the expected place in the current table
-  ))
+  (let ((tbl (define-handler
+		 (foo/bar :content-type "text/html") ((name >>keyword))
+	       (format nil "Hello, ~a!" name))))
+    (is 'house::handler-entry (type-of (find-handler :GET "/foo/bar" :handler-table tbl))
+	"define-handler inserts a handler-entry at the appropriate place in the handler table")
+    (is t (closing? (find-handler :GET "/foo/bar" :handler-table tbl))
+	"define-handler sets the handler-entry:closing? to T")
+    (is "Hello, INAIMATHI!"
+	(body
+	 (funcall
+	  (house::fn (find-handler :GET "/foo/bar" :handler-table tbl))
+	  (make-instance
+	   'request :http-method :GET :resource "/foo/bar"
+		    :parameters '((:name . "inaimathi")))))
+	"Calling the fn behaves as a call to the appropriate closing-handler would"))
+
+  (let ((tbl (define-channel
+		 (foo/bar/baz) ((name >>keyword))
+	       (format nil "Hello, ~a!" name))))
+    (is 'house::handler-entry (type-of (find-handler :GET "/foo/bar/baz" :handler-table tbl))
+	"define-handler inserts a handler-entry at the appropriate place in the handler table")
+    (is nil (closing? (find-handler :GET "/foo/bar/baz" :handler-table tbl))
+	"define-handler sets the handler-entry:closing? to T")
+    (is :subscribing-socket
+	(progn (funcall
+		(house::fn (find-handler :GET "/foo/bar/baz" :handler-table tbl))
+		(make-instance
+		 'request :http-method :GET :resource "/foo/bar"
+		 :parameters '((:name . "inaimathi"))
+		 :socket-of :subscribing-socket))
+	       (car (member :subscribing-socket
+			    (subscribers-of 'foo/bar/baz))))
+	"Calling the fn behaves as a call to the appropriate stream-handler would"))))
