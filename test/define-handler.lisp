@@ -39,9 +39,18 @@
 
  (subtest
   "-param-bindings"
-  ;; TODO - expands symbol annotations to fdefinition calls
-  ;; TODO - leaves list annotations as-is
-  )
+  (is (-param-bindings '((a (>>LIST #'>>KEYWORD))))
+      '((a (get-param request :a (>>list #'>>keyword))))
+      "Leaves list annotations as-is")
+  (is (-param-bindings '((a (>>LIST >>KEYWORD))))
+      '((a (get-param request :a (>>list >>keyword))))
+      "Leaves list annotations as-is even if that's not the right thing to do?f")
+  (is (-param-bindings '((a #'>>keyword)))
+      '((a (get-param request :a #'>>keyword)))
+      "Leaves function-namespace annotations as-is")
+  (is (-param-bindings '((a >>keyword)))
+      '((a (get-param request :a (fdefinition '>>keyword))))
+      "Converts variable-namespace annotation symbols to functions"))
 
  (subtest
   "closing-handler"
