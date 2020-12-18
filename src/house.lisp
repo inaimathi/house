@@ -41,8 +41,7 @@
 		((and (request buf) (zerop (expecting buf)))
 		 (remhash ready conns)
 		 (when (contents buf)
-		   (setf (parameters (request buf))
-			 (nconc (parse buf) (parameters (request buf)))))
+		   (setf (parameters (request buf)) (nconc (parse buf) (parameters (request buf)))))
 		 (handler-case
 		     (handle-request! ready (request buf))
 		   (http-assertion-error () (error! +400+ ready))
@@ -124,7 +123,8 @@
 			       for s = (get-session! tok)
 			       when s do (return s))))
 	       (sess (or check? (new-session!))))
-	  (setf (session req) sess)
+	  (setf (session req) sess
+		(socket-of req) sock)
 	  (let ((resp (funcall (fn handler) req))
 		(stream (flex-stream sock)))
 	    (setf (cookie resp) (unless check? (token sess)))
