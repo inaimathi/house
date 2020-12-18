@@ -10,15 +10,6 @@
   `(unless ,assertion
      (error (make-instance 'http-assertion-error :assertion ',assertion))))
 
-(defclass buffer ()
-  ((tries :accessor tries :initform 0)
-   (contents :accessor contents :initform nil)
-   (bi-stream :reader bi-stream :initarg :bi-stream)
-   (total-buffered :accessor total-buffered :initform 0)
-   (started :reader started :initform (get-universal-time))
-   (request :accessor request :initform nil)
-   (expecting :accessor expecting :initform 0)))
-
 (defclass session ()
   ((started :reader started :initform (get-universal-time))
    (last-poked :initform (get-universal-time))

@@ -26,53 +26,32 @@
   (etypecase ready
     (stream-server-usocket (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
     (stream-usocket
-     (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-instance 'buffer :bi-stream (flex-stream ready))))))
+     (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-buffer (flex-stream ready))))))
        (if (eq :eof (buffer! buf))
 	   (ignore-errors
 	    (remhash ready conns)
 	    (socket-close ready))
-	   (let ((too-big? (> (total-buffered buf) +max-request-size+))
-		 (too-old? (> (- (get-universal-time) (started buf)) +max-request-age+))
-		 (too-needy? (> (tries buf) +max-buffer-tries+)))
+	   (let ((too-big? (> (buffer-total-buffered buf) +max-request-size+))
+		 (too-old? (> (- (get-universal-time) (buffer-started buf)) +max-request-age+))
+		 (too-needy? (> (buffer-tries buf) +max-buffer-tries+)))
 	     (cond (too-big?
 		    (error! +413+ ready)
 		    (remhash ready conns))
 		   ((or too-old? too-needy?)
 		    (error! +400+ ready)
 		    (remhash ready conns))
-		   ((and (request buf) (zerop (expecting buf)))
+		   ((and (buffer-request buf) (zerop (expecting buf)))
 		    (remhash ready conns)
-		    (when (contents buf)
-		      (setf (parameters (request buf)) (nconc (parse-buffer buf) (parameters (request buf)))))
+		    (when (buffer-contents buf)
+		      (setf (parameters (buffer-request buf)) (nconc (parse-buffer buf) (parameters (request buf)))))
 		    (handler-case
-			(handle-request! ready (request buf))
+			(handle-request! ready (buffer-request buf))
 		      (http-assertion-error () (error! +400+ ready))
 		      #-CCL((and (not warning)
 			     (not simple-error)) (e)
 			     (error! +500+ ready))
 		      #+CCL(error (e)
 			     (error! +500+ ready)))))))))))
-
-(defun buffer! (buffer)
-  (handler-case
-      (let ((stream (bi-stream buffer)))
-	(incf (tries buffer))
-	(loop for char = (read-char-no-hang stream)
-	   until (or (null char) (eql :eof char))
-	   do (push char (contents buffer))
-	   do (incf (total-buffered buffer))
-	   when (request buffer) do (decf (expecting buffer))
-	   when (and #-windows(char= char #\linefeed)
-		     #+windows(char= char #\newline)
-		 (line-terminated? (contents buffer)))
-	   do (multiple-value-bind (parsed expecting) (parse-buffer buffer)
-		(setf (request buffer) parsed
-		      (expecting buffer) expecting
-		      (contents buffer) nil)
-		(return char))
-	   when (> (total-buffered buffer) +max-request-size+) return char
-	   finally (return char)))
-    (error () :eof)))
 
 ;;;;; Parse-related
 (defun parse-param-string (params)
@@ -103,14 +82,6 @@
 	   else do (push (cons n value) (headers req)))
 	(setf (parameters req) (parse-param-string parameters))
 	(values req expecting)))))
-
-(defun parse-buffer (buf)
-  (let ((str (coerce (reverse (contents buf)) 'string)))
-    (if (request buf)
-	(if (eq :application/json (->keyword (cdr (assoc :content-type (headers (request buf))))))
-	    (cl-json:decode-json-from-string str)
-	    (parse-param-string str))
-	(parse-request-string str))))
 
 ;;;;; Handling requests
 (defun handle-request! (sock req)

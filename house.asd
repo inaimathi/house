@@ -20,6 +20,7 @@
 		src :components
 		((:file "package")
 		 (:file "model")
+		 (:file "buffer")
 		 (:file "handler-table")
 		 (:file "util")
 		 (:file "define-handler")
