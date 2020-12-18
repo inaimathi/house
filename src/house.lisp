@@ -135,7 +135,10 @@
 		(progn
 		  (force-output stream)
 		  (write!
-		   (make-instance 'sse :data "Listening...")
+		   (make-instance
+		    'sse :data (json:encode-json-to-string
+				'((:status . :ok)
+				  (:message . "Listening..."))))
 		   stream)
 		  (force-output stream)))))
 	(error! +404+ sock))))
