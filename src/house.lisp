@@ -167,10 +167,6 @@
     (write-ln stream it))
   (values))
 
-(defun write-sse! (res stream)
-  (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
-	  (id res) (event res) (retry res) (data res)))
-
 (defun error! (err sock)
   (ignore-errors
     (write-response! err (flex-stream sock))

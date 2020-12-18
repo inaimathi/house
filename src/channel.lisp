@@ -2,6 +2,10 @@
 
 (defparameter *channels* (make-hash-table))
 
+(defstruct (sse (:constructor make-sse (data &key id event retry)))
+  (id nil) (event nil) (retry nil)
+  (data (error "an SSE must have :data") :type string))
+
 (defun subscribe! (channel sock)
   (push sock (gethash channel *channels*))
   nil)
@@ -9,8 +13,9 @@
 (defun subscribers-of (channel)
   (gethash channel *channels*))
 
-(defun make-sse (data &key id event retry)
-  (make-instance 'sse :data data :id id :event event :retry retry))
+(defun write-sse! (res stream)
+  (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
+	  (ss-id res) (sse-event res) (sse-retry res) (sse-data res)))
 
 (defun publish! (channel msg)
   (let ((message (etypecase msg

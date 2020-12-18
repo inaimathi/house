@@ -46,12 +46,6 @@
    (expires :accessor expires :initform nil)
    (body :accessor body :initform nil :initarg :body)))
 
-(defclass sse ()
-  ((id :reader id :initarg :id :initform nil)
-   (event :reader event :initarg :event :initform nil)
-   (retry :reader retry :initarg :retry :initform nil)
-   (data :reader data :initarg :data)))
-
 ;;;;;;;;;; HTTP basic responses
 (defparameter +404+
   (make-instance 'response :response-code "404 Not Found"
