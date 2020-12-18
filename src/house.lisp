@@ -1,9 +1,5 @@
 (in-package :house)
 
-;;;;;;;;;; Function definitions
-;;; The basic structure of the server is
-; buffering-listen -> parse -> session-lookup -> handle -> channel
-
 ;;;;; Buffer/listen-related
 (defun start (port &optional (host usocket:*wildcard-host*))
   (assert (integerp port))

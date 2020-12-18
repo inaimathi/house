@@ -6,20 +6,19 @@
   (:export
    :with-handler-table :empty-handler-table :insert-handler! :find-handler
 
-   :closing-handler :stream-handler
+   :closing-handler :stream-handler :redirect!
    :define-channel :define-handler :define-json-handler :define-file-handler
-   :redirect!
 
    :>>string :>>integer :>>keyword :>>json :>>list
 
-   :request :resource :headers :session-tokens :parameters
+   :request :resource :headers :parameters
 
-   :assert-http
-   :root :sock :session :parameters
+   :assert-http :root :session :parameters :socket-of
 
-   :new-session! :new-session-hook! :clear-session-hooks! :get-session! :lookup
-
+   :new-session! :new-session-hook! :clear-session-hooks! :get-session!
    :subscribers-of :subscribe! :publish! :make-sse
+
+   :lookup
 
    :start))
 
