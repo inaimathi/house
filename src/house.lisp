@@ -36,10 +36,10 @@
 		   ((or too-old? too-needy?)
 		    (error! +400+ ready)
 		    (remhash ready conns))
-		   ((and (buffer-request buf) (zerop (expecting buf)))
+		   ((and (buffer-request buf) (zerop (buffer-expecting buf)))
 		    (remhash ready conns)
 		    (when (buffer-contents buf)
-		      (setf (parameters (buffer-request buf)) (nconc (parse-buffer buf) (parameters (request buf)))))
+		      (setf (parameters (buffer-request buf)) (nconc (parse-buffer buf) (parameters (buffer-request buf)))))
 		    (handler-case
 			(handle-request! ready (buffer-request buf))
 		      (http-assertion-error () (error! +400+ ready))

@@ -21,9 +21,9 @@
 	   when (and #-windows(char= char #\linefeed)
 		     #+windows(char= char #\newline)
 		 (line-terminated? (buffer-contents buffer)))
-	   do (multiple-value-bind (parsed expecting) (parse-buffer buffer)
+	   do (multiple-value-bind (parsed expected) (parse-buffer buffer)
 		(setf (buffer-request buffer) parsed
-		      (buffer-expecting buffer) expecting
+		      (buffer-expecting buffer) expected
 		      (buffer-contents buffer) nil)
 		(return char))
 	   when (> (buffer-total-buffered buffer) +max-request-size+) return char
