@@ -3,7 +3,7 @@
 (defparameter *sessions* (make-hash-table :test 'equal :size 2000))
 (defparameter *new-session-hook* nil)
 
-(defmethod new-session-hook! ((callback function))
+(defun new-session-hook! (callback)
   (push callback *new-session-hook*))
 
 (defun clear-session-hooks! ()
@@ -41,6 +41,6 @@
      for v being the hash-values of *sessions*
      when (idling? v) do (remhash k *sessions*)))
 
-(defmethod poke! ((sess session))
+(defun poke! (sess)
   (setf (slot-value sess 'last-poked) (get-universal-time))
   sess)

@@ -5,7 +5,8 @@
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
 
 ;;;;; Buffer/listen-related
-(defmethod start ((port integer) &optional (host usocket:*wildcard-host*))
+(defun start (port &optional (host usocket:*wildcard-host*))
+  (assert (integerp port))
   (let ((server (socket-listen host port :reuse-address t :element-type 'octet))
 	(conns (make-hash-table)))
     (unwind-protect
@@ -20,36 +21,37 @@
 	(loop for c being the hash-keys of conns do (kill-sock! c))
 	(kill-sock! server)))))
 
-(defmethod process-ready ((ready stream-server-usocket) (conns hash-table))
-  (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
-
-(defmethod process-ready ((ready stream-usocket) (conns hash-table))
-  (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-instance 'buffer :bi-stream (flex-stream ready))))))
-    (if (eq :eof (buffer! buf))
-	(ignore-errors
-	  (remhash ready conns)
-	  (socket-close ready))
-	(let ((too-big? (> (total-buffered buf) +max-request-size+))
-	      (too-old? (> (- (get-universal-time) (started buf)) +max-request-age+))
-	      (too-needy? (> (tries buf) +max-buffer-tries+)))
-	  (cond (too-big?
-		 (error! +413+ ready)
-		 (remhash ready conns))
-		((or too-old? too-needy?)
-		 (error! +400+ ready)
-		 (remhash ready conns))
-		((and (request buf) (zerop (expecting buf)))
-		 (remhash ready conns)
-		 (when (contents buf)
-		   (setf (parameters (request buf)) (nconc (parse buf) (parameters (request buf)))))
-		 (handler-case
-		     (handle-request! ready (request buf))
-		   (http-assertion-error () (error! +400+ ready))
-		   #-CCL((and (not warning)
-			  (not simple-error)) (e)
-			  (error! +500+ ready e))
-		   #+CCL(error (e)
-			  (error! +500+ ready e)))))))))
+(defun process-ready (ready conns)
+  (assert (hash-table-p conns))
+  (etypecase ready
+    (stream-server-usocket (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
+    (stream-usocket
+     (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-instance 'buffer :bi-stream (flex-stream ready))))))
+       (if (eq :eof (buffer! buf))
+	   (ignore-errors
+	    (remhash ready conns)
+	    (socket-close ready))
+	   (let ((too-big? (> (total-buffered buf) +max-request-size+))
+		 (too-old? (> (- (get-universal-time) (started buf)) +max-request-age+))
+		 (too-needy? (> (tries buf) +max-buffer-tries+)))
+	     (cond (too-big?
+		    (error! +413+ ready)
+		    (remhash ready conns))
+		   ((or too-old? too-needy?)
+		    (error! +400+ ready)
+		    (remhash ready conns))
+		   ((and (request buf) (zerop (expecting buf)))
+		    (remhash ready conns)
+		    (when (contents buf)
+		      (setf (parameters (request buf)) (nconc (parse-buffer buf) (parameters (request buf)))))
+		    (handler-case
+			(handle-request! ready (request buf))
+		      (http-assertion-error () (error! +400+ ready))
+		      #-CCL((and (not warning)
+			     (not simple-error)) (e)
+			     (error! +500+ ready))
+		      #+CCL(error (e)
+			     (error! +500+ ready)))))))))))
 
 (defun buffer! (buffer)
   (handler-case
@@ -63,7 +65,7 @@
 	   when (and #-windows(char= char #\linefeed)
 		     #+windows(char= char #\newline)
 		 (line-terminated? (contents buffer)))
-	   do (multiple-value-bind (parsed expecting) (parse buffer)
+	   do (multiple-value-bind (parsed expecting) (parse-buffer buffer)
 		(setf (request buffer) parsed
 		      (expecting buffer) expecting
 		      (contents buffer) nil)
@@ -73,21 +75,18 @@
     (error () :eof)))
 
 ;;;;; Parse-related
-(defmethod parse-params (content-type (params null)) nil)
-(defmethod parse-params (content-type (params string))
+(defun parse-param-string (params)
   (loop for pair in (split "&" params)
-     for (name val) = (split "=" pair)
-     collect (cons (->keyword name) (or val ""))))
+	for (name val) = (split "=" pair)
+	collect (cons (->keyword name) (or val ""))))
 
-(defmethod parse-params ((content-type (eql :application/json)) (params string))
-  (cl-json:decode-json-from-string params))
-
-(defmethod parse-cookies ((cookie string))
+(defun parse-cookies (cookie)
+  (assert (stringp cookie))
   (loop for c in (split "; " cookie) for s = (split "=" c)
      if (and (string= "name" (first s)) (second s)) collect (second s)
      else collect c))
 
-(defmethod parse ((str string))
+(defun parse-request-string (str)
   (let ((lines (split "\\r?\\n" str))
 	(expecting 0))
     (destructuring-bind (http-method path http-version) (split " " (pop lines))
@@ -102,19 +101,19 @@
 	   if (eq n :cookie) do (setf (session-tokens req) (parse-cookies value))
 	   else if (eq n :content-length) do (setf expecting (parse-integer value))
 	   else do (push (cons n value) (headers req)))
-	(setf (parameters req) (parse-params nil parameters))
+	(setf (parameters req) (parse-param-string parameters))
 	(values req expecting)))))
 
-(defmethod parse ((buf buffer))
+(defun parse-buffer (buf)
   (let ((str (coerce (reverse (contents buf)) 'string)))
     (if (request buf)
-	(parse-params
-	 (->keyword (cdr (assoc :content-type (headers (request buf)))))
-	 str)
-	(parse str))))
+	(if (eq :application/json (->keyword (cdr (assoc :content-type (headers (request buf))))))
+	    (cl-json:decode-json-from-string str)
+	    (parse-param-string str))
+	(parse-request-string str))))
 
 ;;;;; Handling requests
-(defmethod handle-request! ((sock usocket) (req request))
+(defun handle-request! (sock req)
   (multiple-value-bind (handler path-params) (find-handler (http-method req) (resource req))
     (setf (parameters req) (append (parameters req) path-params))
     (if handler
@@ -125,16 +124,16 @@
 	       (sess (or check? (new-session!))))
 	  (setf (session req) sess
 		(socket-of req) sock)
-	  (let ((resp (funcall (fn handler) req))
+	  (let ((resp (funcall (handler-entry-fn handler) req))
 		(stream (flex-stream sock)))
 	    (setf (cookie resp) (unless check? (token sess)))
-	    (write! resp stream)
+	    (write-response! resp stream)
 	    (crlf stream)
-	    (if (closing? handler)
+	    (if (handler-entry-closing? handler)
 		(socket-close sock)
 		(progn
 		  (force-output stream)
-		  (write!
+		  (write-sse!
 		   (make-instance
 		    'sse :data (json:encode-json-to-string
 				'((:status . :ok)
@@ -143,17 +142,7 @@
 		  (force-output stream)))))
 	(error! +404+ sock))))
 
-(defun crlf (&optional (stream *standard-output*))
-  (write-char #\return stream)
-  (write-char #\linefeed stream)
-  (values))
-
-(defun write-ln (stream &rest sequences)
-  (declare (optimize space speed))
-  (dolist (s sequences) (write-sequence s stream))
-  (crlf stream))
-
-(defmethod write! ((res response) (stream stream))
+(defun write-response! (res stream)
   (write-ln stream "HTTP/1.1 " (response-code res))
   (write-ln stream "Content-Type: " (content-type res) "; charset=" (charset res))
   (loop for (name . value) in (headers res)
@@ -178,12 +167,11 @@
     (write-ln stream it))
   (values))
 
-(defmethod write! ((res sse) (stream stream))
+(defun write-sse! (res stream)
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
 	  (id res) (event res) (retry res) (data res)))
 
-(defmethod error! ((err response) (sock usocket) &optional instance)
-  (declare (ignorable instance))
+(defun error! (err sock)
   (ignore-errors
-    (write! err (flex-stream sock))
+    (write-response! err (flex-stream sock))
     (socket-close sock)))

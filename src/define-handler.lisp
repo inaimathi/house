@@ -57,6 +57,10 @@
 	  collect (funcall elem-type elem))))
 
 ;;;;;;;;;; Defining Handlers
+(defstruct handler-entry
+  (fn nil)
+  (closing? t))
+
 (defun -param-bindings (params)
   (loop for p in (dedupe-params params)
 	collect (let ((f (if (symbolp (cadr p))
@@ -115,16 +119,14 @@
 (defmacro define-channel ((name &key (method :any)) (&rest args) &body body)
   `(insert-handler!
     ,method ',name
-    (make-instance
-     'handler-entry
+    (make-handler-entry
      :fn (stream-handler (,name) ,(-full-params name args) ,@body)
      :closing? nil)))
 
 (defmacro define-handler ((name &key (content-type "text/html") (method :any)) (&rest args) &body body)
   `(insert-handler!
     ,method ,(if (eq name 'root) "" `',name)
-    (make-instance
-     'handler-entry
+    (make-handler-entry
      :fn (closing-handler
 	     (:content-type ,content-type)
 	     ,(-full-params name args) ,@body)
@@ -146,8 +148,7 @@
 	  ((cl-fad:file-exists-p path)
 	   (insert-handler!
 	    method (path->uri path :stem-from stem-from)
-	    (make-instance
-	     'handler-entry
+	    (make-handler-entry
 	     :fn (let ((mime (path->mimetype path)))
 		   (lambda (request)
 		     (declare (ignore request))

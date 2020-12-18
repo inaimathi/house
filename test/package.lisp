@@ -5,8 +5,8 @@
   (:import-from
    #:house
 
-   #:parse #:parse-params #:http-assertion-error
+   #:parse-request-string #:parse-buffer #:parse-param-string #:http-assertion-error
    #:path-var? #:var-key #:var-annotation #:>>string
    #:get-param #:dedupe-params #:-param-bindings
 
-   #:response-code #:content-type #:body #:closing?))
+   #:response-code #:content-type #:body))

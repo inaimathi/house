@@ -10,10 +10,6 @@
   `(unless ,assertion
      (error (make-instance 'http-assertion-error :assertion ',assertion))))
 
-(defclass handler-entry ()
-  ((fn :reader fn :initarg :fn :initform nil)
-   (closing? :reader closing? :initarg :closing? :initform t)))
-
 (defclass buffer ()
   ((tries :accessor tries :initform 0)
    (contents :accessor contents :initform nil)

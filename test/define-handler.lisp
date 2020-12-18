@@ -138,12 +138,12 @@
 	       (format nil "Hello, ~a!" name))))
     (is 'house::handler-entry (type-of (find-handler :GET "/foo/bar" :handler-table tbl))
 	"define-handler inserts a handler-entry at the appropriate place in the handler table")
-    (is t (closing? (find-handler :GET "/foo/bar" :handler-table tbl))
+    (is t (house::handler-entry-closing? (find-handler :GET "/foo/bar" :handler-table tbl))
 	"define-handler sets the handler-entry:closing? to T")
     (is "Hello, INAIMATHI!"
 	(body
 	 (funcall
-	  (house::fn (find-handler :GET "/foo/bar" :handler-table tbl))
+	  (house::handler-entry-fn (find-handler :GET "/foo/bar" :handler-table tbl))
 	  (make-instance
 	   'request :http-method :GET :resource "/foo/bar"
 		    :parameters '((:name . "inaimathi")))))
@@ -154,11 +154,11 @@
 	       (format nil "Hello, ~a!" name))))
     (is 'house::handler-entry (type-of (find-handler :GET "/foo/bar/baz" :handler-table tbl))
 	"define-handler inserts a handler-entry at the appropriate place in the handler table")
-    (is nil (closing? (find-handler :GET "/foo/bar/baz" :handler-table tbl))
+    (is nil (house::handler-entry-closing? (find-handler :GET "/foo/bar/baz" :handler-table tbl))
 	"define-handler sets the handler-entry:closing? to T")
     (is :subscribing-socket
 	(progn (funcall
-		(house::fn (find-handler :GET "/foo/bar/baz" :handler-table tbl))
+		(house::handler-entry-fn (find-handler :GET "/foo/bar/baz" :handler-table tbl))
 		(make-instance
 		 'request :http-method :GET :resource "/foo/bar"
 		 :parameters '((:name . "inaimathi"))

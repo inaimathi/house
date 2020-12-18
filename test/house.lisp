@@ -3,26 +3,26 @@
 (tests
 
  (subtest
-  "parse-elems"
-  (is '((:a . "1")) (parse-params :multipart "a=1"))
-  (is '((:a . "1") (:b . "2")) (parse-params :multipart "a=1&b=2"))
+  "parse-param-string"
+  (is '((:a . "1")) (parse-param-string "a=1"))
+  (is '((:a . "1") (:b . "2")) (parse-param-string "a=1&b=2"))
   (is '((:longer . "parameter names") (:look . "something like this"))
-      (parse-params :multipart "longer=parameter names&look=something like this"))
+      (parse-param-string "longer=parameter names&look=something like this"))
   (is '((:longer . "parameter%20names") (:look . "something%20like%20this"))
-      (parse-params :multipart "longer=parameter%20names&look=something%20like%20this")))
+      (parse-param-string "longer=parameter%20names&look=something%20like%20this")))
 
  (subtest
   "Request parsing"
   (subtest
    "Older HTTP versions"
    (is-error
-    (parse "GET /index.html HTTP/0.9
+    (parse-request-string "GET /index.html HTTP/0.9
 Host: www.example.com
 
 ")
     'http-assertion-error)
    (is-error
-    (parse "GET /index.html HTTP/1.0
+    (parse-request-string "GET /index.html HTTP/1.0
 Host: www.example.com
 
 ")
@@ -30,7 +30,7 @@ Host: www.example.com
 
   (subtest
    "Vanilla GET"
-   (let ((req (parse "GET /index.html HTTP/1.1
+   (let ((req (parse-request-string "GET /index.html HTTP/1.1
 Host: www.example.com
 
 ")))
@@ -39,7 +39,7 @@ Host: www.example.com
 
   (subtest
    "GET with params"
-   (let ((req (parse "GET /index.html?test=1 HTTP/1.1
+   (let ((req (parse-request-string "GET /index.html?test=1 HTTP/1.1
 Host: www.example.com
 
 ")))
@@ -49,7 +49,7 @@ Host: www.example.com
 
   (subtest
    "POST with body"
-   (let ((req (parse "POST /index.html HTTP/1.1
+   (let ((req (parse-request-string "POST /index.html HTTP/1.1
 Host: www.example.com
 Content-length: 6
 
@@ -62,7 +62,7 @@ test=1
 
   (subtest
    "POST with parameters and body"
-   (let ((req (parse "POST /index.html?get-test=get HTTP/1.1
+   (let ((req (parse-request-string "POST /index.html?get-test=get HTTP/1.1
 Host: www.example.com
 Content-length: 14
 

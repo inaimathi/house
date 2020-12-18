@@ -3,7 +3,7 @@
 (defparameter *channels* (make-hash-table))
 
 (defun subscribe! (channel sock)
-  (push sock (lookup channel *channels*))
+  (push sock (gethash channel *channels*))
   nil)
 
 (defun subscribers-of (channel)
@@ -20,7 +20,7 @@
       (setf (gethash channel *channels*)
 	    (loop for sock in (subscribers-of channel)
 		  when (ignore-errors
-			(write! message (flex-stream sock))
+			(write-sse! message (flex-stream sock))
 			(force-output (socket-stream sock))
 			sock)
 		    collect it)))))
