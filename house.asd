@@ -4,7 +4,7 @@
   :description "Custom asynchronous HTTP server for the Deal project."
   :author "Inaimathi <leo.zovic@gmail.com>"
   :license "AGPL3"
-  :version "0.0.1"
+  :version "0.5.0"
   :serial t
   :depends-on (#:alexandria
 	       #:anaphora
