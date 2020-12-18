@@ -122,7 +122,7 @@
 
 (defmacro define-handler ((name &key (content-type "text/html") (method :any)) (&rest args) &body body)
   `(insert-handler!
-    ,method ',name
+    ,method ,(if (eq name 'root) "" `',name)
     (make-instance
      'handler-entry
      :fn (closing-handler
