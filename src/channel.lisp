@@ -15,7 +15,7 @@
 
 (defun write-sse! (res stream)
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
-	  (ss-id res) (sse-event res) (sse-retry res) (sse-data res)))
+	  (sse-id res) (sse-event res) (sse-retry res) (sse-data res)))
 
 (defun publish! (channel msg)
   (let ((message (etypecase msg
