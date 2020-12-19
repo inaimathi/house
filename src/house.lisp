@@ -71,13 +71,5 @@
 	    (crlf stream)
 	    (if (handler-entry-closing? handler)
 		(socket-close sock)
-		(progn
-		  (force-output stream)
-		  (write-sse!
-		   (make-instance
-		    'sse :data (json:encode-json-to-string
-				'((:status . :ok)
-				  (:message . "Listening..."))))
-		   stream)
-		  (force-output stream)))))
+		(force-output stream))))
 	(-error! +404+ sock))))
