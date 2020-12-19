@@ -19,12 +19,13 @@
   :components ((:module
 		src :components
 		((:file "package")
-		 (:file "model")
+		 (:file "session")
+		 (:file "request")
+		 (:file "response")
 		 (:file "buffer")
 		 (:file "handler-table")
 		 (:file "util")
 		 (:file "define-handler")
-		 (:file "session")
 		 (:file "channel")
 		 (:file "house")))))
 

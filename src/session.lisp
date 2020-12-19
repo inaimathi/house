@@ -3,6 +3,12 @@
 (defparameter *sessions* (make-hash-table :test 'equal :size 2000))
 (defparameter *new-session-hook* nil)
 
+(defclass session ()
+  ((started :reader started :initform (get-universal-time))
+   (last-poked :initform (get-universal-time))
+   (token :reader token :initarg :token)
+   (session-values :reader session-values :initform (make-hash-table :test 'equal))))
+
 (defun new-session-hook! (callback)
   (push callback *new-session-hook*))
 

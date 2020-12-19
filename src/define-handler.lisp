@@ -1,5 +1,16 @@
 (in-package #:house)
 
+;;;;;;;;;; Basic errors
+(define-condition http-assertion-error (error)
+  ((assertion :initarg :assertion :initform nil :reader assertion))
+  (:report (lambda (condition stream)
+	     (format stream "Failed assertions '~s'"
+		     (assertion condition)))))
+
+(defmacro assert-http (assertion)
+  `(unless ,assertion
+     (error (make-instance 'http-assertion-error :assertion ',assertion))))
+
 ;;;;;;;;;; Parameter type parsing.
 (defun get-param (request arg annotation)
   (aif (cdr (assoc arg (parameters request)))
