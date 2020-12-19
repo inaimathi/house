@@ -32,7 +32,7 @@
 		       :handler-table (empty-handler-table)))
       "Finds a deep handler")
 
-  (is '(:FOO ((:C . "SEE")))
+  (is '(:FOO ((:C . "see")))
       (multiple-value-list
        (find-handler
 	:GET "/a/b/see"
@@ -41,10 +41,10 @@
 			:handler-table (empty-handler-table))))
       "Finds a handler with a variable in its path and binds")
 
-  (is '(:FOO ((:C . "SEE")))
+  (is '(:FOO ((:C . "See")))
       (multiple-value-list
        (find-handler
-	:GET "/a/b/see/d/e"
+	:GET "/a/b/See/d/e"
 	:handler-table (insert-handler!
 			:any 'a/b/<c>=>>string/d/e :foo
 			:handler-table (empty-handler-table))))
@@ -62,13 +62,13 @@
   (is '(:FOO ((:C . "SEE")))
       (multiple-value-list
        (find-handler
-	:GET "/a/b/see/d/e"
+	:GET "/a/b/SEE/d/e"
 	:handler-table (insert-handler!
 			:any 'a/b/<c>=>>string/d/e :foo
 			:handler-table (empty-handler-table))))
       "Finds a handler with a variable in the middle of its path and binds")
 
-  (is '(:FOO ((:C . "SEE") (:A . "AYE")))
+  (is '(:FOO ((:C . "see") (:A . "aye")))
       (multiple-value-list
        (find-handler
 	:GET "/aye/b/see/d/e"
@@ -76,6 +76,15 @@
 			:any '<a>=>>string/b/<c>=>>string/d/e :foo
 			:handler-table (empty-handler-table))))
       "Finds a handler with multiple variables of its path and binds")
+
+  (is '(:FOO ((:C . "See") (:B . "Bee") (:A . "ayE")))
+      (multiple-value-list
+       (find-handler
+	:GET "/ayE/Bee/See/d/e"
+	:handler-table (insert-handler!
+			:any '<a>=>>string/<b>=>>string/<c>=>>string/d/e :foo
+			:handler-table (empty-handler-table))))
+      "Path variables are bound in a handler call are case sensitive")
 
   (is '(:BAR nil)
       (multiple-value-list

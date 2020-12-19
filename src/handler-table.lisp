@@ -80,7 +80,7 @@
   handler-table)
 
 (defun find-handler (method uri-string &key (handler-table *handler-table*))
-  (let ((split (process-uri uri-string))
+  (let ((split (split-at #\/ uri-string))
 	(handlers (handlers handler-table)))
     (or (trie-lookup (cons method split) handlers)
 	(trie-lookup (cons :any split) handlers))))

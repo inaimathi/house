@@ -74,10 +74,12 @@
 
 (defun -param-bindings (params)
   (loop for p in (dedupe-params params)
-	collect (let ((f (if (symbolp (cadr p))
+	collect (let ((f (if (and (cadr p) (symbolp (cadr p)))
 			     `(fdefinition ',(cadr p))
 			     (cadr p))))
-		  `(,(car p) (get-param request ,(->keyword (car p)) ,f)))))
+		  (if f
+		      `(,(car p) (get-param request ,(->keyword (car p)) ,f))
+		      `(,(car p) (quri:url-decode (cdr (assoc ,(->keyword (car p)) (parameters request)))))))))
 
 (defmacro closing-handler ((&key (content-type "text/html") headers) (&rest args) &body body)
   `(lambda (request)
@@ -173,12 +175,3 @@
 	  (t
 	   (warn "Tried serving nonexistent file '~a'" path))))
   nil)
-
-(defun redirect! (target &key permanent?)
-  (make-instance
-   'response
-   :response-code (if permanent?
-		      "301 Moved Permanently"
-		      "307 Temporary Redirect")
-   :location target :content-type "text/plain"
-   :body "Resource moved..."))

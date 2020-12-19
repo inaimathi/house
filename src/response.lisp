@@ -38,6 +38,15 @@
   (values))
 
 ;;;;;;;;;; HTTP basic responses
+(defun redirect! (target &key permanent?)
+  (make-instance
+   'response
+   :response-code (if permanent?
+		      "301 Moved Permanently"
+		      "307 Temporary Redirect")
+   :location target :content-type "text/plain"
+   :body "Resource moved..."))
+
 (defparameter +404+
   (make-instance 'response :response-code "404 Not Found"
 		 :content-type "text/plain" :body "Resource not found..."))
