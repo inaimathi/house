@@ -9,22 +9,11 @@ The goals of `:house` are to be
 2. Minimal, but complete for the purposes of web application development
 3. Fully native
 
-Performance is _not_ on this list. This is the server/client framework you run if you never want to see an `ffi-binding` error on any platform where you're able to run `sbcl`. If you need high-throughput, take a look at [`woo`](https://github.com/fukamachi/woo. If you need a thread-per-request model, look into [`hunchentoot`](http://edicl.github.io/hunchentoot/). If you need a file server, go set up [`nginx`](https://www.nginx.com/).
+Performance is _not_ on this list. This is the server/client framework you run if you never want to see an `ffi-binding` error on any platform where you're able to run `sbcl`. If you need high-throughput, take a look at [`woo`](https://github.com/fukamachi/woo). If you need a thread-per-request model, look into [`hunchentoot`](http://edicl.github.io/hunchentoot/). If you need a file server, go set up [`nginx`](https://www.nginx.com/).
 
 ### News
 
-House is undergoing a major overhaul. The goals are
-
-1. Clean up a bunch of the request/parameter internals
-2. Clean up the external interface, including handler definition and local server definitions
-3. Get a much stricter test suite running
-4. Add a similarly asynchronous Lisp-native web client
-
-### TODO
-
-- Remove the requirement for `bordeaux-threads` (only required in testing, and I think defining a server intelligently takes away the need for that)
-- Simplify the "type" system for parameters (possibly allow passing a validation/parsing function)
-- Add a client (this is going to need to be broken into a lot of steps, and may end up being a separate branch after we ge the above sorted out)
+House has undergone a major overhaul. This shouls simplify a bunch of things.
 
 ### Installation
 
@@ -36,7 +25,7 @@ House is undergoing a major overhaul. The goals are
 
     (define-handler (hello-world :content-type "text/plain") ()
       "Hello world!")
-	(define-handler (hello-you/-name=string) ()
+	(define-handler (hello-you/<name>=>>string) ()
 	  (format nil "Hello there, ~a!" name))
 	(house:start 4040)
 
@@ -60,9 +49,9 @@ It'll handle individual files by serving them, and it'll handle directories by s
 
 ##### Redirecting
 
-You can set up re-directors with
+You can re-direct to a different handler by using the `redirect!` function inside of a `define-handler` call
 
-    (define-redirect-handler (name :permanent? t) "/static/name.html")
+    (define-handler (name) () (redirect! "/static/name.html" :permanent? t))
 
 Requests for `"/name"` will now instead serve a `301 Moved Permanently` response with a target of `"/static/name.html"` (if you leave out `:permanent? t`, it'll be a `307 Temporary Redirect` instead). House isn't optimized for redirecting, either from the performance or the notation perspective. If you're going to be re-directing any significant number of pages, consider having your reverse proxy handling that too.
 
@@ -70,27 +59,23 @@ Requests for `"/name"` will now instead serve a `301 Moved Permanently` response
 
 You can specify desired argument types for your handlers. For example:
 
-    (define-handler (handler) ((foo :json) (bar :integer)))
+    (define-handler (handler) ((foo >>json) (bar >>integer) (baz (>>list #'>>keyword)))
        ...)
 
-You can then use `bar` as an integer and `foo` as a parsed JSON s-expression in the body of that handler. The built-in types are `:string`, `:integer`, `:json`, `:keyword`, `:list-of-keyword` and `:list-of-integer`. If you need a more specific type, you can use `define-http-type`. For example:
+You can then use `bar` as an integer, `foo` as a parsed JSON s-expression and `baz` as a parsed `list` of `keyword`s  in the body of that handler. The built-in types are `>>string`, `>>integer`, `>>json`, `>>keyword`, and `>>list`. The last one is a higher-order function; it expects to output a sequence of the given type.
 
-    (define-http-type (:game)
-	     :type-expression `(gethash ,parameter *game-table*)
-	     :type-assertion `(typep ,parameter 'game))
+Type annotations are just named functions. You can define your own by defining a function of `String -> a` that parses a string into your desired type and possibly throws an `error` of some sort on failure. If you need a more specific type, you can use `defun`. For example:
 
-Once that's done, you can annotate parameters with the `:game` label.
+	(defun >>game (param)
+	  (let ((g (gethash param *game-table*)))
+	    (assert (typep g 'game))
+	    g))
 
-    (define-handler (handler) ((foo :game) ...) ...)
+Once that's done, you can annotate parameters with the `>>game` type.
 
-`foo` will then be looked up in `*game-table*`, and `assert-http`-ed to be of type `'game` before the handler body is evaluated.
+    (define-handler (handler) ((foo >>game) ...) ...)
 
-It's also possible to enforce arbitrary properties of parsed parameters. For instance
-
-    (define-handler (handler) ((foo :integer (>= 64 foo 2) (evenp foo)))
-       ...)
-
-ensures that `foo` will be an even integer between 2 and 64 (inclusive).
+`foo` will then be looked up in `*game-table*`, and `assert`ed to be of type `'game` before the handler body is evaluated.
 
 All this is entirely optional. If you don't care about it, just pass un-annotated arguments to your handlers, and they'll do exactly what you'd expect. You'll then be able to handle the type-conversion/assertions entirely manually.
 
@@ -103,25 +88,23 @@ Takes a port-number and starts the server listening on that port.
 #### Handlers
 ###### `define-handler`
 
-Defines a handler. The handler body has access to three bound symbols in addition to its parameters:
+Defines a handler. The handler body has access to the bound symbol `request` in addition to its' parameters:
 
-- `sock`: the requesting socket (should only really be used for `subscribe!` calls, but you can also write things to it if you need to send stuff before the request proper)
-- `session`: the session belonging to the requesting user
 - `request`: the raw `request` object, with exported accessors `resource`, `headers` `session-tokens` and `paramteres`.
 	- `paramters` contains the raw `alist` of incoming HTTP parameters
 	- `resource` contains the raw URI, minus host and parameters
 	- `headers` contains the raw HTTP headers `alist` (of particular interest is the `:host` key)
 	- `session-tokens` contains the raw list of session tokens associated with this request
-
-Depending on the keyword parameter `:close-socket?`, it may or may not close the incoming TCP stream after it responds.
+	- `session` contains the session
+	- `socket-of` is the `socket` that generated the request. In principle, you could use this to set up some sort of communication layer that isn't strict `HTTP` if you like.
 
 ###### `define-json-handler`
 
-Defines a closing `handler` that responds with `"application/json"`, and automatically JSON-encodes its response.
+Defines a `handler` that responds with `"application/json"`, and automatically JSON-encodes its response.
 
-###### `define-redirect-handler`
+###### `define-channel`
 
-Defines a handler that sends either `301` or `307` HTTP responses (permanent redirect and temporary redirect respectively).
+Defines a `handler` that opens an [`EventSource`](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) instead of closing after sending the response.
 
 ###### `define-file-handler`
 
@@ -134,25 +117,4 @@ Subscribes the specified socket to the specified channel. Should only be used wi
 
 ###### `publish!`
 
-Publishes a message to all subscribers of the specified channel.
-
-*The rest is still TODO.*
-
-#### Session
-###### `new-session!`
-###### `new-session-hook!`
-###### `clear-session-hooks!`
-###### `get-session!`
-###### `lookup`
-
-#### Handler types
-###### `define-http-type`
-
-#### Macro-symbols
-###### `parameter`
-###### `restrictions`
-###### `assert-http`
-###### `root`
-###### `sock`
-###### `session`
-###### `request`
+Publishes a message to all subscribers of the specified channel. At the moment, it's assumed that the message recipients are all `EventSource` consumers (I'm working on a more general `WebSocket`-capable interface)
