@@ -20,11 +20,11 @@
 		src :components
 		((:file "package")
 		 (:file "session")
+		 (:file "util")
 		 (:file "request")
 		 (:file "response")
 		 (:file "buffer")
 		 (:file "handler-table")
-		 (:file "util")
 		 (:file "define-handler")
 		 (:file "channel")
 		 (:file "house")))))

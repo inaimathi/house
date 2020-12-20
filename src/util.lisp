@@ -1,5 +1,17 @@
 (in-package :house)
 
+;;;;;;;;;; Basic errors
+(define-condition http-assertion-error (error)
+  ((assertion :initarg :assertion :initform nil :reader assertion))
+  (:report (lambda (condition stream)
+	     (format stream "Failed assertions '~s'"
+		     (assertion condition)))))
+
+(defmacro assert-http (assertion)
+  `(unless ,assertion
+     (error (make-instance 'http-assertion-error :assertion ',assertion))))
+
+;;;;;;;;;; Basic stream checks/writes
 (defun split-at (elem seq)
   (split-sequence:split-sequence elem seq :remove-empty-subseqs t))
 
@@ -19,6 +31,7 @@
   (dolist (s sequences) (write-sequence s stream))
   (crlf stream))
 
+;;;;;;;;;; General ease-of-use
 (defun ->keyword (thing)
   (etypecase thing
     (null nil)
