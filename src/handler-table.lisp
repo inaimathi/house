@@ -4,6 +4,7 @@
 ;;;;;;;; (It needs to allow for variables at each level, including prospective matching of the rest of a URI segment)
 (defstruct trie
   (value nil)
+  (rest nil)
   (map (make-hash-table :test 'equal))
   (vars (make-hash-table)))
 
@@ -14,6 +15,10 @@
   (and (stringp str)
        (> (length str) 0)
        (eql #\< (char str 0))))
+
+(defun rest-var? (str)
+  (and (path-var? str)
+       (eql #\* (char str 1))))
 
 (defun var-key (str)
   (when (path-var? str)
@@ -28,6 +33,9 @@
   (labels ((rec (key-parts trie)
              (cond ((null key-parts)
                     (setf (trie-value trie) value))
+		   ((rest-var? (first key-parts))
+		    (assert-http (not (rest key-parts)))
+		    (setf (trie-rest trie) (cons (first key-parts) value)))
                    ((path-var? (first key-parts))
                     (next! (var-key (first key-parts)) (rest key-parts) (trie-vars trie)))
                    (t
@@ -43,18 +51,27 @@
 (defun trie-lookup (key trie)
   (labels ((rec (key-parts trie bindings)
              (if key-parts
-                 (let ((next (gethash (canonical (first key-parts)) (trie-map trie))))
-                   (cond (next
-                          (rec (rest key-parts) next bindings))
-                         ((any-vars? trie)
-                          (loop for k being the hash-keys of (trie-vars trie)
-                             for v being the hash-values of (trie-vars trie)
-                             do (multiple-value-bind (val bindings)
-                                    (rec (rest key-parts) v (cons (cons k (first key-parts)) bindings))
-                                  (when val
-                                    (return-from trie-lookup (values val bindings))))))
-                         (t
-                          nil)))
+                 (let ((next (gethash (canonical (first key-parts)) (trie-map trie)))
+		       (rst (trie-rest trie)))
+                   (cond
+		     ((and rst (rest key-parts))
+		      (return-from
+		       trie-lookup
+			(values
+			 (cdr rst)
+			 (cons (cons (var-key (car rst)) (rest key-parts))
+			       bindings))))
+		     (next
+                      (rec (rest key-parts) next bindings))
+                     ((any-vars? trie)
+                      (loop for k being the hash-keys of (trie-vars trie)
+                            for v being the hash-values of (trie-vars trie)
+                            do (multiple-value-bind (val bindings)
+                                   (rec (rest key-parts) v (cons (cons k (first key-parts)) bindings))
+                                 (when val
+                                   (return-from trie-lookup (values val bindings))))))
+                     (t
+                      nil)))
                  (values (trie-value trie) bindings)))
 	   (canonical (thing)
 	     (typecase thing
@@ -83,5 +100,4 @@
 
 (defmacro with-handler-table (tbl &body body)
   `(let ((*handler-table* ,tbl))
-     ,@body
-     *handler-table*))
+     ,@body))
