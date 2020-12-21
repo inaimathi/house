@@ -2,13 +2,16 @@
 
 ;;;;;;;;;; Parameter type parsing.
 (defun get-param (request arg annotation)
-  (aif (cdr (assoc arg (parameters request)))
-       (handler-case
-	   (funcall annotation (quri:url-decode it))
-	 (error (c)
-	   (declare (ignore c))
-	   (error (make-instance 'http-assertion-error :assertion arg))))
-       (error (make-instance 'http-assertion-error :assertion arg))))
+  (let* ((raw (cdr (assoc arg (parameters request))))
+	 (decoded (if (stringp raw) (quri:url-decode raw) raw)))
+    (cond ((and decoded (not annotation)) decoded)
+	  (annotation
+	   (handler-case
+	       (funcall annotation decoded)
+	     (error (c)
+	       (declare (ignore c))
+	       (error (make-instance 'http-assertion-error :assertion arg)))))
+	  (t (error (make-instance 'http-assertion-error :assertion arg))))))
 
 (defun dedupe-params (full-params)
   (let ((dupes (make-hash-table))
@@ -32,7 +35,9 @@
 	  collect (list p ann))))
 
 ;;;;; Common HTTP types
-(defun >>string (arg) arg)
+(defun >>string (arg)
+  (assert (stringp arg))
+  arg)
 
 (defun >>integer (arg)
   (etypecase arg
@@ -46,6 +51,7 @@
   (json:decode-json-from-string arg))
 
 (defun >>keyword (arg)
+  (assert arg)
   (etypecase arg
     (keyword arg)
     (symbol (intern (symbol-name arg) :keyword))
@@ -53,7 +59,7 @@
 
 (defun >>list (elem-type)
   (lambda (arg)
-    (loop for elem in (json:decode-json-from-string arg)
+    (loop for elem in (if (stringp arg) (json:decode-json-from-string arg) arg)
 	  collect (funcall elem-type elem))))
 
 ;;;;;;;;;; Defining Handlers
@@ -66,9 +72,7 @@
 	collect (let ((f (if (and (cadr p) (symbolp (cadr p)))
 			     `(fdefinition ',(cadr p))
 			     (cadr p))))
-		  (if f
-		      `(,(car p) (get-param request ,(->keyword (car p)) ,f))
-		      `(,(car p) (quri:url-decode (cdr (assoc ,(->keyword (car p)) (parameters request)))))))))
+		  `(,(car p) (get-param request ,(->keyword (car p)) ,f)))))
 
 (defmacro closing-handler ((&key (content-type "text/html") headers) (&rest args) &body body)
   `(lambda (request)
