@@ -24,7 +24,7 @@
 
 (in-package :house)
 
-(declaim (inline crlf write-ln idling? flex-stream write-response! write-sse! process-ready parse-param-string parse-request-string))
+(declaim (inline crlf write-ln idling? flex-stream write-response! write-sse! process-ready parse-param-string parse-request-string get-param))
 
 (setf *random-state* (make-random-state t))
 
