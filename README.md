@@ -13,7 +13,7 @@ Performance is _not_ on this list. This is the server/client framework you run i
 
 ### News
 
-House has undergone a major overhaul. This shouls simplify a bunch of things.
+House has undergone a major overhaul. This should simplify a bunch of things.
 
 ### Installation
 
@@ -78,6 +78,22 @@ Once that's done, you can annotate parameters with the `>>game` type.
 `foo` will then be looked up in `*game-table*`, and `assert`ed to be of type `'game` before the handler body is evaluated.
 
 All this is entirely optional. If you don't care about it, just pass un-annotated arguments to your handlers, and they'll do exactly what you'd expect. You'll then be able to handle the type-conversion/assertions entirely manually.
+
+###### Setting up "&rest" parameters
+
+If you define a handler with a variable name starting with `*`, it will bind to the remainder of the path elements of the request. For example
+
+    (define-handler (example/<*foo>) () (format nil "~s" *foo))
+
+If you `(start 5000)` now, then hop over to a shell, you can do
+
+```
+you@that:~/$ curl http://127.0.0.1:5000/example/a/b/c/d/e
+("a" "b" "c" "d" "e")
+```
+
+Be careful with this feature; `&rest` parameters shadow anything further down in the handler tree.
+
 
 ### External API
 #### Basics
