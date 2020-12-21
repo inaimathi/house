@@ -63,10 +63,7 @@
     (rec key trie nil)))
 
 ;;;;; And using it to structure our handler table
-(defclass handler-table ()
-  ((handlers :initform (make-trie) :initarg :handlers :reader handlers)))
-
-(defun empty-handler-table () (make-instance 'handler-table))
+(defun empty-handler-table () (make-trie))
 
 (defparameter *handler-table* (empty-handler-table))
 
@@ -76,14 +73,13 @@
     (symbol (split-at #\/ (symbol-name uri)))))
 
 (defun insert-handler! (method uri-string handler &key (handler-table *handler-table*))
-  (trie-insert! (cons method (process-uri uri-string)) handler (handlers handler-table))
+  (trie-insert! (cons method (process-uri uri-string)) handler handler-table)
   handler-table)
 
 (defun find-handler (method uri-string &key (handler-table *handler-table*))
-  (let ((split (split-at #\/ uri-string))
-	(handlers (handlers handler-table)))
-    (or (trie-lookup (cons method split) handlers)
-	(trie-lookup (cons :any split) handlers))))
+  (let ((split (split-at #\/ uri-string)))
+    (or (trie-lookup (cons method split) handler-table)
+	(trie-lookup (cons :any split) handler-table))))
 
 (defmacro with-handler-table (tbl &body body)
   `(let ((*handler-table* ,tbl))
