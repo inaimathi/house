@@ -35,6 +35,7 @@
     #-windows(crlf stream)
     #+windows(format stream "~%")
     (write-ln stream it))
+  (finish-output stream)
   (values))
 
 ;;;;;;;;;; HTTP basic responses
