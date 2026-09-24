@@ -72,4 +72,40 @@ post-test=post
      (is '((:host . "www.example.com")) (headers req))
      (is '(:get-test . "get") (assoc :get-test (parameters req)))
      ;; (is '(:post-test . "post") (assoc :post-test (parameters req)))
-     ))))
+     )))
+
+ (subtest
+  "Response framing"
+  (flet ((wire (res)
+           (flex:with-output-to-sequence (out)
+             (house::write-response! res (flex:make-flexi-stream out :external-format :utf-8))))
+         (octets (str) (flex:string-to-octets str :external-format :utf-8)))
+    (let* ((body "Jérôme ✓")
+           (bytes (wire (make-instance 'house::response :body body)))
+           (text (flex:octets-to-string bytes :external-format :utf-8)))
+      (ok (search (format nil "Content-Length: ~a~c~c" (length (octets body)) #\Return #\Linefeed) text)
+          "Content-Length counts UTF-8 bytes, not characters")
+      (is (octets (format nil "~c~c~c~c~a" #\Return #\Linefeed #\Return #\Linefeed body))
+          (subseq bytes (- (length bytes) (length (octets body)) 4))
+          :test #'equalp
+          "Headers end with a blank line and nothing follows the body")
+      (ok (search "Connection: close" text) "Closing responses say so"))
+    (let ((text (flex:octets-to-string
+                 (wire (make-instance 'house::response :keep-alive? t :content-type "text/event-stream"))
+                 :external-format :utf-8)))
+      (ok (search "Connection: keep-alive" text) "Stream responses stay open")
+      (ok (alexandria:ends-with-subseq (format nil "~c~c~c~c" #\Return #\Linefeed #\Return #\Linefeed) text)
+          "Bodiless stream responses still terminate their headers"))))
+
+ (subtest
+  "Parameter decoding"
+  (is "héllo there" (house::url-decode-param "h%C3%A9llo%20there"))
+  (is "héllo" (house::url-decode-param "héllo") "Already-decoded non-ASCII passes through")
+  (is 42 (house::url-decode-param 42)))
+
+ (subtest
+  "Session tokens"
+  (let ((toks (loop repeat 1000 collect (house::new-session-token!))))
+    (ok (every (lambda (tk) (= 64 (length tk))) toks) "1000 tokens generated without error")
+    (ok (every (lambda (tk) (every #'alphanumericp tk)) toks))
+    (is 1000 (length (remove-duplicates toks :test #'string=))))))

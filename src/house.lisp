@@ -16,21 +16,33 @@
 	(loop for c being the hash-keys of conns do (kill-sock! c))
 	(kill-sock! server)))))
 
+(defun flush-and-close! (sock)
+  ;; usocket >= 0.8.4 closes SBCL socket streams with :ABORT T (to plug an fd
+  ;; leak), which discards anything still in the output buffer. Flush first,
+  ;; or every response vanishes and clients see an empty reply.
+  (ignore-errors (finish-output (socket-stream sock)))
+  (ignore-errors (socket-close sock)))
+
 (defun -error! (err sock)
-  (ignore-errors
-    (write-response! err (flex-stream sock))
-    (socket-close sock)))
+  (ignore-errors (write-response! err (flex-stream sock)))
+  (flush-and-close! sock))
 
 (defun process-ready (ready conns)
   (assert (hash-table-p conns))
   (etypecase ready
     (stream-server-usocket (setf (gethash (socket-accept ready :element-type 'octet) conns) nil))
     (stream-usocket
-     (let ((buf (or (gethash ready conns) (setf (gethash ready conns) (make-buffer (flex-stream ready))))))
-       (if (eq :eof (buffer! buf))
-	   (ignore-errors
-	    (remhash ready conns)
-	    (socket-close ready))
+     (let* ((buf (or (gethash ready conns)
+                     (setf (gethash ready conns) (make-buffer (socket-stream ready)))))
+            (status (buffer! buf)))
+       (case status
+         (:eof
+          (remhash ready conns)
+          (ignore-errors (socket-close ready)))
+         (:bad
+          (remhash ready conns)
+          (-error! +400+ ready))
+         (t
 	   (let ((too-big? (> (buffer-total-buffered buf) +max-request-size+))
 		 (too-old? (> (- (get-universal-time) (buffer-started buf)) +max-request-age+))
 		 (too-needy? (> (buffer-tries buf) +max-buffer-tries+)))
@@ -42,16 +54,19 @@
 		    (remhash ready conns))
 		   ((and (buffer-request buf) (zerop (buffer-expecting buf)))
 		    (remhash ready conns)
-		    (when (buffer-contents buf)
-		      (setf (parameters (buffer-request buf)) (nconc (parse-buffer buf) (parameters (buffer-request buf)))))
 		    (handler-case
-			(handle-request! ready (buffer-request buf))
+			(progn
+			  (when (buffer-contents buf)
+			    (setf (parameters (buffer-request buf))
+				  (nconc (handler-case (parse-buffer buf)
+					   ;; e.g. malformed JSON: the client's fault
+					   (error () (error 'http-assertion-error :assertion :body)))
+					 (parameters (buffer-request buf)))))
+			  (handle-request! ready (buffer-request buf)))
 		      (http-assertion-error () (-error! +400+ ready))
-		      #-CCL((and (not warning)
-			     (not simple-error)) (e)
-			     (-error! +500+ ready))
-		      #+CCL(error (e)
-			     (-error! +500+ ready)))))))))))
+		      ;; This used to catch (AND (NOT WARNING) (NOT SIMPLE-ERROR)), so an
+		      ;; (ERROR "...") in a handler escaped and took the server down.
+		      (error () (-error! +500+ ready))))))))))))
 
 (defun handle-request! (sock req)
   (multiple-value-bind (handler path-params) (find-handler (http-method req) (resource req))
@@ -68,8 +83,7 @@
 		(stream (flex-stream sock)))
 	    (setf (cookie resp) (unless check? (token sess)))
 	    (write-response! resp stream)
-	    (crlf stream)
 	    (if (handler-entry-closing? handler)
-		(socket-close sock)
+		(flush-and-close! sock)
 		(force-output stream))))
 	(-error! +404+ sock))))

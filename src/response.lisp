@@ -27,14 +27,26 @@
 	   do (write-ln stream "Set-Cookie: name=" it "; domain=" d))))
   (awhen (location res)
     (write-ln stream "Location: " it))
-  (when (keep-alive? res)
-    (write-ln stream "Connection: keep-alive")
-    (write-ln stream "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-  (awhen (body res)
-    (write-ln stream "Content-Length: " (write-to-string (length it)))
-    #-windows(crlf stream)
-    #+windows(format stream "~%")
-    (write-ln stream it))
+  (if (keep-alive? res)
+      (progn
+        (write-ln stream "Connection: keep-alive")
+        (write-ln stream "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
+      ;; Every non-streaming handler closes the socket after responding.
+      (write-ln stream "Connection: close"))
+  ;; Content-Length is a byte count, so encode first: (LENGTH string) is
+  ;; wrong for any non-ASCII body and truncates the response client-side.
+  (let ((octets (etypecase (body res)
+                  (null nil)
+                  (string (flex:string-to-octets (body res) :external-format :utf-8))
+                  (vector (body res)))))
+    (when octets
+      (write-ln stream "Content-Length: " (write-to-string (length octets))))
+    ;; Blank line ends the headers; the body follows with nothing after it.
+    ;; (A trailing CRLF here, plus another one in HANDLE-REQUEST!, used to put
+    ;; four stray bytes on the wire after every response.)
+    (crlf stream)
+    (when octets
+      (write-sequence octets stream)))
   (values))
 
 ;;;;;;;;;; HTTP basic responses

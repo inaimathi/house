@@ -13,7 +13,7 @@
 	       #:cl-fad #:cl-ppcre #:optima #:cl-json #:split-sequence
 	       #:quri
 
-	       #:session-token #:trivial-features
+	       #:trivial-features
 
 	       #:lisp-unit)
   :components ((:module

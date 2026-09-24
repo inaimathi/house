@@ -1,9 +1,17 @@
 (in-package #:house)
 
 ;;;;;;;;;; Parameter type parsing.
+(defun url-decode-param (raw)
+  ;; Percent-encoded text is pure ASCII. QURI:URL-DECODE treats each char of
+  ;; its input as a raw byte, so a string that's already decoded (a JSON
+  ;; string value, a raw UTF-8 form field) makes it signal an encoding error.
+  (if (and (stringp raw) (every (lambda (c) (< (char-code c) 128)) raw))
+      (handler-case (quri:url-decode raw) (error () raw))
+      raw))
+
 (defun get-param (request arg annotation)
   (let* ((raw (cdr (assoc arg (parameters request))))
-	 (decoded (if (stringp raw) (quri:url-decode raw) raw)))
+	 (decoded (url-decode-param raw)))
     (cond ((and decoded (not annotation)) decoded)
 	  (annotation
 	   (handler-case
