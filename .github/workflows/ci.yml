@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests (SBCL)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      LISP: sbcl-bin
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Common Lisp
+        uses: 40ants/setup-lisp@76212e4597c780ad0e2ead24144b54310dffb6e3 # v4
+
+      - name: Run unit tests
+        shell: lispsh -eo pipefail {0}
+        run: |
+          qlot exec ros -s prove \
+            -e '(asdf:load-asd (merge-pathnames "house.asd" (uiop:getcwd)))' \
+            -e '(ql:quickload (list :house :house/test))' \
+            -e '(uiop:quit (if (prove:run :house/test) 0 1))'
