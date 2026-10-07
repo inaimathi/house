@@ -95,6 +95,26 @@ you@that:~/$ curl http://127.0.0.1:5000/example/a/b/c/d/e
 Be careful with this feature; `&rest` parameters shadow anything further down in the handler tree.
 
 
+### Tests
+
+From the repository root, in a Lisp with Quicklisp loaded:
+
+```common-lisp
+(ql:quickload :prove)
+(asdf:load-asd (merge-pathnames "house.asd" (uiop:getcwd)))
+(ql:quickload (list :house :house/test))
+(prove:run :house/test)
+```
+
+The suite uses `test-utils` for unit tests and property tests. It also starts
+real servers on ephemeral ports bound to `127.0.0.1`, sends raw HTTP requests,
+and checks response bytes, connection closure, parameter parsing, incomplete
+requests, error recovery, and SSE publication order. A bounded property test
+round-trips twenty generated requests. No external server or HTTP client
+library is needed; reads and shutdown have five-second timeouts, and fixtures
+clean up their threads and sockets even when a test fails. These tests run as
+part of the same `house/test` system in GitHub Actions.
+
 ### External API
 #### Basics
 ###### `start`

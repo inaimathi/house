@@ -2,12 +2,20 @@
 
 (defun start (port &optional (host usocket:*wildcard-host*))
   (assert (integerp port))
-  (let ((server (socket-listen host port :reuse-address t :element-type 'octet))
-	(conns (make-hash-table)))
+  (serve (socket-listen host port :reuse-address t :element-type 'octet)))
+
+(defun serve (server &key stop-p)
+  "Run the event loop on an already-bound listener, closing it on exit.
+STOP-P, when supplied, permits cooperative shutdown between requests. Keeping
+the listener separate lets tests use port zero without a port-selection race."
+  (let ((conns (make-hash-table)))
     (unwind-protect
-	 (loop (loop for ready in
-		    #-windows(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
-		    #+windows(wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t :timeout 5)
+	 (loop until (and stop-p (funcall stop-p))
+               do (loop for ready in
+                        (wait-for-input
+                         (cons server (alexandria:hash-table-keys conns))
+                         :ready-only t
+                         :timeout (if stop-p 0.05 #-windows nil #+windows 5))
 		  do (process-ready ready conns)))
       (flet ((kill-sock! (sock)
 	       #+lispworks (loop for res = (socket-close sock)

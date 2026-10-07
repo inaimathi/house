@@ -41,7 +41,8 @@
                 ((:file "package")
 		 (:test-file "handler-table")
 		 (:test-file "define-handler")
-                 (:test-file "house"))))
+                 (:test-file "house")
+                 (:test-file "end-to-end"))))
   :perform (test-op
 	    :after (op c)
 	    (funcall (intern #.(string :run) :prove) c)))
