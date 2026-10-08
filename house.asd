@@ -23,6 +23,7 @@
 		 (:file "util")
 		 (:file "request")
 		 (:file "response")
+		 (:file "static-file")
 		 (:file "buffer")
 		 (:file "handler-table")
 		 (:file "define-handler")
@@ -42,7 +43,8 @@
 		 (:test-file "handler-table")
 		 (:test-file "define-handler")
                  (:test-file "house")
-                 (:test-file "end-to-end"))))
+                 (:test-file "end-to-end")
+                 (:test-file "static-file"))))
   :perform (test-op
 	    :after (op c)
 	    (funcall (intern #.(string :run) :prove) c)))

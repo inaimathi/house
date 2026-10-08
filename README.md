@@ -39,13 +39,45 @@ Because `:house` is single-threaded, using `house:start` directly as above will 
 
 ##### Static Files
 
-**House is not a file server**. Static file serving capability is provided for ease of testing, and maybe for *very* small-scale deployment. If you're going to be taking any significant traffic, get a reverse proxy going with something like [`nginx`](http://www.cyberciti.biz/tips/using-nginx-as-reverse-proxy.html).
+Return a file response from any ordinary handler. Routing and authorization stay
+in your handler code:
 
-You can define a static file handler with
+```common-lisp
+(define-handler (logo) ()
+  (static-file "logo.png" :root #p"./public/"))
+```
 
-    (define-file-handler [file-or-directory])
+`static-file` requires a root directory and a decoded, relative filename. It
+opens the file when sending the response, chooses a content type from its
+extension (or accepts `:content-type`), and copies the body through a 16 KiB
+buffer. Unknown extensions use `application/octet-stream`. It supports GET and
+HEAD, sends `Last-Modified`, and handles `If-Modified-Since` revalidation with
+304 responses. There is no in-memory file cache or directory listing.
 
-It'll handle individual files by serving them, and it'll handle directories by serving all contained files recursively.
+To mount a whole directory:
+
+```common-lisp
+(define-file-handler #p"./public/" :prefix "/assets")
+```
+
+This serves `/assets/logo.png` and nested files, including files created after
+registration. Explicit handlers take priority over mounts, and a more specific
+mount takes priority over a broader one. The default prefix is `/`. Other HTTP
+methods receive 405. Missing, inaccessible, and rejected paths receive 404.
+
+Directory mounts decode the URL path once; `+` remains a literal plus. The
+`static-file` constructor does not decode it again. Absolute paths, parent/dot
+components, wildcards, backslashes, device/drive syntax, and control characters
+are rejected. Resolved symlinks must remain within the resolved root directory.
+
+The served tree must be application-owned and contain ordinary files. Portable
+pathname checks do not protect against a local process replacing symlinks during
+resolution/opening. File reads and socket writes remain synchronous; use a
+reverse proxy for large files or heavy static traffic.
+
+Migration: `define-file-handler` now mounts a directory with `:prefix`; it no
+longer recursively registers individual files or accepts `:stem-from`. For a
+single file, use an ordinary handler returning `static-file` as above.
 
 ##### Redirecting
 
@@ -144,7 +176,11 @@ Defines a `handler` that opens an [`EventSource`](https://developer.mozilla.org/
 
 ###### `define-file-handler`
 
-Defines a handler that very inefficiently responds with static files.
+Mounts a directory beneath a literal URL `:prefix` using file responses.
+
+###### `static-file`
+
+Constructs a file response for a decoded relative path beneath an explicit `:root`.
 
 #### Event Streams
 ###### `subscribe!`

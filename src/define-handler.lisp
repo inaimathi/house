@@ -150,29 +150,31 @@
   `(define-handler (,name :content-type "application/json") ,args
      (json:encode-json-to-string (progn ,@body))))
 
-;;;;; Special case handlers
-(defun define-file-handler (path &key stem-from (method :any))
-  (warn "define-file-handler is not intended for production use")
-  (let ((path (if (stringp path) (pathname path) path)))
-    (cond ((cl-fad:directory-exists-p path)
-	   (cl-fad:walk-directory
-	    path
-	    (lambda (fname)
-	      (define-file-handler fname :stem-from (or stem-from (format nil "~a" path)) :method method))))
-	  ((cl-fad:file-exists-p path)
-	   (insert-handler!
-	    method (path->uri path :stem-from stem-from)
-	    (make-handler-entry
-	     :fn (let ((mime (path->mimetype path)))
-		   (lambda (request)
-		     (declare (ignore request))
-		     (if (cl-fad:file-exists-p path)
-			 (with-open-file (s path :direction :input :element-type 'octet)
-			   (let ((buf (make-array (file-length s) :element-type 'octet)))
-			     (read-sequence buf s)
-			     (make-instance 'response :content-type mime :body buf)))
-			 +404+)))
-	     :closing? t)))
-	  (t
-	   (warn "Tried serving nonexistent file '~a'" path))))
-  nil)
+;;;;; Static directory mounts
+(defun define-file-handler (root &key (prefix "/") (method :any))
+  "Mount ROOT beneath a literal URL PREFIX. Files are looked up per request.
+Use STATIC-FILE from a normal handler to serve individual or authorized files."
+  (let* ((root (or (cl-fad:directory-exists-p root)
+                   (error "Static root is not an existing directory: ~s" root)))
+         (root (truename root))
+         (prefix (string-right-trim "/" prefix)))
+    (unless (or (string= prefix "")
+                (and (char= #\/ (char prefix 0))
+                     (every (lambda (c) (or (alphanumericp c) (find c "/-_"))) prefix)))
+      (error "Static URL prefix must be an absolute literal path: ~s" prefix))
+    (insert-handler!
+     method prefix
+     (make-handler-entry
+      :fn (lambda (request)
+            (let* ((resource (resource request))
+                   (relative (subseq resource (min (length resource) (1+ (length prefix)))))
+                   ;; URL paths preserve '+'. Decode once, strictly, before the
+                   ;; filesystem policy runs. Malformed encodings yield 404.
+                   (decoded (handler-case
+                                (unless (cl-ppcre:scan "%(?![0-9a-fA-F]{2})" relative)
+                                  (quri:url-decode (cl-ppcre:regex-replace-all "\\+" relative "%2B")
+                                                   :encoding :utf-8))
+                              (error () nil))))
+              (if decoded (static-file decoded :root root) +404+)))
+      :closing? t)
+     :prefix t)))

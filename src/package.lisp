@@ -6,7 +6,7 @@
   (:export
    :with-handler-table :empty-handler-table :insert-handler! :find-handler
 
-   :closing-handler :stream-handler :redirect!
+   :closing-handler :stream-handler :redirect! :static-file
    :define-channel :define-handler :define-json-handler :define-file-handler
 
    :>>string :>>integer :>>keyword :>>json :>>list
@@ -24,7 +24,7 @@
 
 (in-package :house)
 
-(declaim (inline crlf write-ln idling? flex-stream write-response! write-sse! process-ready parse-param-string parse-request-string get-param))
+(declaim (inline crlf write-ln idling? flex-stream write-sse! process-ready parse-param-string parse-request-string get-param))
 
 (setf *random-state* (make-random-state t))
 

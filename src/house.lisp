@@ -90,7 +90,7 @@ the listener separate lets tests use port zero without a port-selection race."
 	  (let ((resp (funcall (handler-entry-fn handler) req))
 		(stream (flex-stream sock)))
 	    (setf (cookie resp) (unless check? (token sess)))
-	    (write-response! resp stream)
+	    (write-response! resp stream req)
 	    (if (handler-entry-closing? handler)
 		(flush-and-close! sock)
 		(force-output stream))))

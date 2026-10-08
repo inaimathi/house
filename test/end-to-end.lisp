@@ -122,7 +122,7 @@
 
 (defstruct wire-response status headers body)
 
-(defun read-wire-response (sock deadline)
+(defun read-wire-response (sock deadline &key head)
   (flet ((line ()
            (let ((bytes (wire-through sock #(13 10) deadline)))
              (flex:octets-to-string (subseq bytes 0 (- (length bytes) 2))
@@ -134,7 +134,7 @@
                           collect (cons (string-downcase (subseq text 0 colon))
                                         (string-trim " " (subseq text (1+ colon))))))
            (length-header (cdr (assoc "content-length" headers :test #'string=)))
-           (size (if length-header (parse-integer length-header) 0)))
+           (size (if (and length-header (not head)) (parse-integer length-header) 0)))
       (unless (<= 0 size 65536) (error "Invalid response body length: ~s" size))
       (make-wire-response
        :status status :headers headers

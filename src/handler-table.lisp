@@ -4,6 +4,7 @@
 ;;;;;;;; (It needs to allow for variables at each level, including prospective matching of the rest of a URI segment)
 (defstruct trie
   (value nil)
+  (prefix nil)
   (rest nil)
   (map (make-hash-table :test 'equal))
   (vars (make-hash-table)))
@@ -29,10 +30,12 @@
   (let ((pair (split-at #\= (string-upcase str))))
     (when (cdr pair) (read-from-string (cadr pair)))))
 
-(defun trie-insert! (key value trie)
+(defun trie-insert! (key value trie &key prefix)
   (labels ((rec (key-parts trie)
              (cond ((null key-parts)
-                    (setf (trie-value trie) value))
+                    (if prefix
+                        (setf (trie-prefix trie) value)
+                        (setf (trie-value trie) value)))
 		   ((rest-var? (first key-parts))
 		    (assert-http (not (rest key-parts)))
 		    (setf (trie-rest trie) (cons (first key-parts) value)))
@@ -77,7 +80,17 @@
 	     (typecase thing
 	       (string (string-upcase thing))
 	       (t thing))))
-    (rec key trie nil)))
+    (multiple-value-bind (value bindings) (rec key trie nil)
+      (if value
+          (values value bindings)
+          ;; Literal prefix mounts are a fallback; exact and variable routes
+          ;; retain their existing priority and rest-parameter semantics.
+          (loop with node = trie with found = (trie-prefix trie)
+                for part in key
+                do (setf node (gethash (canonical part) (trie-map node)))
+                while node
+                when (trie-prefix node) do (setf found (trie-prefix node))
+                finally (return found))))))
 
 ;;;;; And using it to structure our handler table
 (defun empty-handler-table () (make-trie))
@@ -89,8 +102,8 @@
     (string (split-at #\/ (string-upcase uri)))
     (symbol (split-at #\/ (symbol-name uri)))))
 
-(defun insert-handler! (method uri-string handler &key (handler-table *handler-table*))
-  (trie-insert! (cons method (process-uri uri-string)) handler handler-table)
+(defun insert-handler! (method uri-string handler &key (handler-table *handler-table*) prefix)
+  (trie-insert! (cons method (process-uri uri-string)) handler handler-table :prefix prefix)
   handler-table)
 
 (defun find-handler (method uri-string &key (handler-table *handler-table*))

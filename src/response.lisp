@@ -12,41 +12,41 @@
    (expires :accessor expires :initform nil)
    (body :accessor body :initform nil :initarg :body)))
 
-(defun write-response! (res stream)
+(defun write-response-headers! (res stream length)
   (write-ln stream "HTTP/1.1 " (response-code res))
-  (write-ln stream "Content-Type: " (content-type res) "; charset=" (charset res))
+  (write-ln stream "Content-Type: " (content-type res)
+            (if (charset res) (format nil "; charset=~a" (charset res)) ""))
   (loop for (name . value) in (headers res)
-     when (not (member
-		name '("Content-Type" "Set-Cookie" "Location" "Connection" "Expires" "Content-Length")
-		:test-not #'string/=))
-     do (write-ln stream name ": " value))
+        unless (member name '("Content-Type" "Set-Cookie" "Location" "Connection"
+                              "Expires" "Content-Length") :test #'string-equal)
+          do (write-ln stream name ": " value))
   (awhen (cookie res)
     (if (null *cookie-domains*)
-	(write-ln stream "Set-Cookie: name=" it)
-	(loop for d in *cookie-domains*
-	   do (write-ln stream "Set-Cookie: name=" it "; domain=" d))))
-  (awhen (location res)
-    (write-ln stream "Location: " it))
-  (if (keep-alive? res)
-      (progn
-        (write-ln stream "Connection: keep-alive")
-        (write-ln stream "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-      ;; Every non-streaming handler closes the socket after responding.
-      (write-ln stream "Connection: close"))
-  ;; Content-Length is a byte count, so encode first: (LENGTH string) is
-  ;; wrong for any non-ASCII body and truncates the response client-side.
+        (write-ln stream "Set-Cookie: name=" it)
+        (loop for d in *cookie-domains*
+              do (write-ln stream "Set-Cookie: name=" it "; domain=" d))))
+  (awhen (location res) (write-ln stream "Location: " it))
+  (write-ln stream "Connection: " (if (keep-alive? res) "keep-alive" "close"))
+  (when (keep-alive? res) (write-ln stream "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
+  (when length (write-ln stream "Content-Length: " (write-to-string length)))
+  (crlf stream))
+
+;; Allow reloading this upgrade into a REPL that loaded the old ordinary function.
+(eval-when (:load-toplevel :execute)
+  (when (and (fboundp 'write-response!)
+             (not (typep (fdefinition 'write-response!) 'generic-function)))
+    (fmakunbound 'write-response!)))
+
+(defgeneric write-response! (res stream &optional request))
+
+(defmethod write-response! ((res response) stream &optional request)
   (let ((octets (etypecase (body res)
                   (null nil)
                   (string (flex:string-to-octets (body res) :external-format :utf-8))
                   (vector (body res)))))
-    (when octets
-      (write-ln stream "Content-Length: " (write-to-string (length octets))))
-    ;; Blank line ends the headers; the body follows with nothing after it.
-    ;; (A trailing CRLF here, plus another one in HANDLE-REQUEST!, used to put
-    ;; four stray bytes on the wire after every response.)
-    (crlf stream)
-    (when octets
-      (write-sequence octets stream)))
+    (write-response-headers! res stream (when octets (length octets)))
+    (unless (and request (eq :head (http-method request)))
+      (when octets (write-sequence octets stream))))
   (values))
 
 ;;;;;;;;;; HTTP basic responses
